@@ -28,6 +28,6 @@
     "allowUnusedLabels": false,
     "checkJs": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist", "tools", "**/*.spec.ts"]
 }

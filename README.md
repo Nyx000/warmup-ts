@@ -90,8 +90,8 @@ src/
 ├── gamemodes/
 │   └── gun-game/        gun-game.ts (the gamemode), ladder.ts (its main plugin)
 ├── plugins/             shared plugins: combat, loadout, players, economy, world, hud, dev
-├── testing/             fake cs_script module the tests run against
 └── types/cs_script.d.ts Valve's API types, synced from your CS2 install
+tests/                   every test, plus the fake cs_script runtime they run against
 ```
 
 ## Writing a plugin

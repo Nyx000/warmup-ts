@@ -16,9 +16,9 @@
     "build": "tsc --noEmit && bun tools/build/compile-all.mjs",
     "deploy": "bun tools/build/compile-all.mjs && bun tools/build/watch-deploy.mjs --once",
     "tools": "bun tools/launch-cs2.mjs",
-    "check": "eslint src/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored && tsc --noEmit && bun test",
-    "lint": "eslint src/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored",
-    "format": "eslint src/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored --fix",
+    "check": "eslint src/**/*.ts tests/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored && tsc --noEmit && bun test",
+    "lint": "eslint src/**/*.ts tests/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored",
+    "format": "eslint src/**/*.ts tests/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored --fix",
     "sync-types": "bun tools/maintenance/sync-type-definitions.mjs",
     "clean": "rm -rf dist/*.js dist/*.vjs",
     "test": "bun test"

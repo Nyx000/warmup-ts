@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { engine } from "../testing/fake-point-script";
-import { createGamemode } from "./gamemode";
-import type { Plugin } from "./plugin";
+import { engine } from "./fake-point-script";
+import { createGamemode } from "../src/core/gamemode";
+import type { Plugin } from "../src/core/plugin";
 
 function start(...plugins: Plugin[]): void {
   createGamemode({ name: "Test", plugins });

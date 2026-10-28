@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { createGamemode } from "../../core/gamemode";
-import { CSGrenadeType, CSInputs, CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "../../testing/fake-point-script";
-import { ladder, type MatchResult } from "./ladder";
+import { createGamemode } from "../src/core/gamemode";
+import { CSGrenadeType, CSInputs, CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "./fake-point-script";
+import { ladder, type MatchResult } from "../src/gamemodes/gun-game/ladder";
 
 const LADDER = ["weapon_glock", "weapon_deagle", "weapon_knife"];
 const PISTOL = weapon(CSWeaponType.PISTOL);
