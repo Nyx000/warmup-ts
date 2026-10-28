@@ -56,5 +56,12 @@ export function teamRules({ autoAssign, damage = "enemies", friendlyFire = false
     onPlayerConnect({ player }) {
       if (autoAssign !== undefined && player?.IsValid()) player.JoinTeam(autoAssign);
     },
+    // Bots connect with no player in the event, pick a team themselves and land here
+    onPlayerTeamChanged({ player }) {
+      if (autoAssign === undefined || !player?.IsValid()) return;
+      const team = player.GetTeamNumber();
+      if (team === autoAssign || (team !== Teams.TERRORIST && team !== Teams.CT)) return;
+      player.GetPlayerController()?.JoinTeam(autoAssign);
+    },
   };
 }
