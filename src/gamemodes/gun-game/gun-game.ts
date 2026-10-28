@@ -54,8 +54,12 @@ const WEAPONS = [
   "weapon_knife",
 ];
 
-/** Sounds played together from each player as they spawn: a squawk and the loudest chicken sound. */
-const SPAWN_SOUNDS = ["Chicken.Panic", "Chicken.FlapWings"];
+/**
+ * Sounds played together from each player as they spawn: a chicken chorus. Stacking different
+ * events is the only way to make it louder, since a sound event's volume is set in the players'
+ * own game files and each event blocks its own repeats for a few seconds.
+ */
+const SPAWN_SOUNDS = ["Chicken.Panic", "Chicken.FlapWings", "Chicken.Fly", "Chicken.Chick.Interact"];
 
 /** Sounds played from the shooter on a headshot, one picked at random each time: every short bell in the game. */
 const HEADSHOT_SOUNDS = [
