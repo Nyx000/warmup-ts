@@ -128,7 +128,7 @@ Each hook gets Valve's event object unchanged: `Instance.OnRoundEnd` becomes
   returning `abort` stops it there.
 - `Instance.OnScriptInput` is keyed by input name, so a plugin registers it itself in `init()`.
 - `Instance.SetThink`, `SetNextThink` and every other `Instance.On*` callback belong to `createGamemode`:
-  a plugin that registers one would replace the core's handler, so the lint rejects it outside `src/core/`.
+  cs_script refuses a second registration, so a plugin's own would fail; the lint rejects it outside `src/core/`.
 - `onFreezeTimeEnd` has no engine event behind it. It fires when the think loop sees
   `GameRules.IsFreezePeriod()` turn false.
 
