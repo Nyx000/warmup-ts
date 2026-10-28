@@ -1,8 +1,8 @@
 /**
- * Pistol gun game, headshots only: free-for-all, three kills per weapon up a ladder of nine
- * pistols, an HE grenade and the knife. A knife kill on the last weapon wins. Players spawn
- * at random deathmatch spawn points, away from other players, after a 10 second warmup, with
- * no freeze time. Everyone joins CT straight away, with no team pick.
+ * PistolGG, a pistol gun game, headshots only: free-for-all, three kills per weapon up a ladder
+ * of nine pistols, an HE grenade and the knife. A knife kill on the last weapon wins. Players
+ * spawn at random points away from other players after a 10 second warmup, with no freeze time.
+ * Everyone joins CT straight away, with no team pick.
  */
 
 import type { GamemodeConfig } from "../../core/gamemode";
@@ -55,15 +55,15 @@ const KILLS_PER_WEAPON = 3;
 
 // ── The gamemode: its name and its plugins, which run in this order ──
 
-export const pistolGunGame: GamemodeConfig = {
-  name: "Pistols Only Gun Game",
+export const pistolGG: GamemodeConfig = {
+  name: "PistolGG",
   plugins: [
     teamRules(TEAMS),
     convars(SERVER),
     ladder({ weapons: WEAPONS, killsPerLevel: KILLS_PER_WEAPON }),
     headshotsOnly(),
     moneyLog(),
-    welcome((name) => `Welcome ${name} to Pistols Only Gun Game, running on WarmupTS`),
+    welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
     randomSpawns({ maps: { de_inferno: deInferno } }),
   ],
 };

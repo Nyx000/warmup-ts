@@ -4,6 +4,6 @@
  */
 
 import { createGamemode } from "./core/gamemode";
-import { pistolGunGame } from "./gamemodes/gun-game/gun-game";
+import { pistolGG } from "./gamemodes/gun-game/gun-game";
 
-createGamemode(pistolGunGame);
+createGamemode(pistolGG);
