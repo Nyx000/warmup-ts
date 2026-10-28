@@ -86,7 +86,7 @@ Plugins only your gamemode uses go in its folder. When a second gamemode needs o
 ```
 src/
 ├── gamemode.ts          entry point: picks the gamemode
-├── core/                the framework: plugin contract, gamemode runtime, team and server rules
+├── core/                the framework: plugin contract, gamemode runtime, player stores, timers, rules
 ├── gamemodes/
 │   └── gun-game/        gun-game.ts (the gamemode), ladder.ts (its main plugin)
 ├── plugins/             shared plugins: combat, loadout, players, economy, world, hud, dev
@@ -129,8 +129,34 @@ Each hook gets Valve's event object unchanged: `Instance.OnRoundEnd` becomes
 - `Instance.OnScriptInput` is keyed by input name, so a plugin registers it itself in `init()`.
 - `Instance.SetThink`, `SetNextThink` and every other `Instance.On*` callback belong to `createGamemode`:
   cs_script refuses a second registration, so a plugin's own would fail; the lint rejects it outside `src/core/`.
-- `onFreezeTimeEnd` has no engine event behind it. It fires when the think loop sees
-  `GameRules.IsFreezePeriod()` turn false.
+- `onFreezeTimeEnd` and `onWarmupEnd` have no engine event behind them. They fire when the think loop
+  sees `GameRules.IsFreezePeriod()` or `GameRules.IsWarmupPeriod()` turn false.
+
+### Per-player data and timers
+
+Data kept per player goes in a `playerStore()`, a `Map` keyed by player slot. List it under `players` on
+the plugin and the gamemode drops a player's entry when they disconnect and carries the rest across
+`script_reload`, so there's no `saveState` to write for it. A store holding something that isn't plain
+data, such as a timer, takes `{ persist: false }`. `connectedPlayers()` lists the players currently on
+the server.
+
+```typescript
+export function killCount(): Plugin {
+  const kills = playerStore<number>();
+  return {
+    name: "killCount",
+    players: { kills },
+    onPlayerKill({ attacker }) {
+      const slot = attacker instanceof CSPlayerPawn ? attacker.GetPlayerController()?.GetPlayerSlot() : undefined;
+      if (slot !== undefined) kills.set(slot, (kills.get(slot) ?? 0) + 1);
+    },
+  };
+}
+```
+
+`after(seconds, fn)` and `every(seconds, fn)` run a function later or repeatedly from the gamemode's
+think loop and return a timer to `cancel()`. A reload cancels every timer, so start the ones a plugin
+needs in `init()`.
 
 Without `teamRules`, `convars` or `serverCommands`, WarmupTS leaves the server's rules alone.
 
@@ -155,8 +181,8 @@ new file, and `bun run check` fails until any new `On*` callback is added to `EN
 `src/core/plugin.ts`.
 
 **Use the think loop for timed work.** `Instance.Delay()` works with `await`, but a pending delay can't
-be cancelled and its behaviour across a reload is undocumented. Anything that has to stop on reload
-belongs in `onThink()`.
+be cancelled and its behaviour across a reload is undocumented. Use `after()` and `every()`, or
+`onThink()`, and never call `Instance.SetThink` from a plugin: the gamemode owns it.
 
 ## Commands
 

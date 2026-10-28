@@ -21,7 +21,9 @@ import {
 } from "cs_script/point_script";
 import type { Vector } from "cs_script/point_script";
 import { convars } from "../../core/convars";
+import { playerStore } from "../../core/players";
 import type { Plugin } from "../../core/plugin";
+import { after, type Timer } from "../../core/timers";
 
 export const PISTOL_LADDER = [
   "weapon_glock",
@@ -84,22 +86,12 @@ export interface LadderConfig {
   onMatchEnd?: (result: MatchResult) => void;
 }
 
-interface LadderState {
-  /** [player slot, ladder index] */
-  levels: [number, number][];
-  /** [player slot, kills on the current level] */
-  kills: [number, number][];
-  /** [player slot, kills this match] */
-  matchKills: [number, number][];
-}
-
 type Phase =
   | { kind: "playing" }
   | {
       kind: "victoryLap";
       winner: CSPlayerPawn;
       winnerName: string;
-      endsAt: number;
       /** Where each frozen player is held */
       frozenAt: Map<CSPlayerPawn, Vector>;
     }
@@ -110,16 +102,18 @@ export function ladder({
   weapons = PISTOL_LADDER,
   killsPerLevel = 3,
   onMatchEnd = () => {},
-}: LadderConfig = {}): Plugin<LadderState> {
+}: LadderConfig = {}): Plugin {
   const rules = convars(RULES, "ladder");
-  let levels = new Map<number, number>();
-  let kills = new Map<number, number>();
-  let matchKills = new Map<number, number>();
+  // Ladder index
+  const levels = playerStore<number>();
+  // Kills on the current level
+  const kills = playerStore<number>();
+  const matchKills = playerStore<number>();
   let phase: Phase = { kind: "playing" };
-  // Player slot -> game time when a bot's next grenade is due
-  const grenadeRefills = new Map<number, number>();
-  // Player slot -> game time a player can next throw
-  const nextThrow = new Map<number, number>();
+  // The timer that gives a bot its next grenade
+  const grenadeRefills = playerStore<Timer>({ persist: false });
+  // Game time a player can next throw
+  const nextThrow = playerStore<number>({ persist: false });
 
   function equip(pawn: CSPlayerPawn): void {
     const slot = pawn.GetPlayerController()?.GetPlayerSlot();
@@ -163,9 +157,12 @@ export function ladder({
   }
 
   function startVictoryLap(winner: CSPlayerPawn, winnerName: string): void {
-    const endsAt = Instance.GetGameTime() + VICTORY_LAP_SECONDS;
-    const lap: Phase = { kind: "victoryLap", winner, winnerName, endsAt, frozenAt: new Map() };
+    const lap: Phase = { kind: "victoryLap", winner, winnerName, frozenAt: new Map() };
     phase = lap;
+    // A round restart ends the lap early; then this has nothing left to end
+    after(VICTORY_LAP_SECONDS, () => {
+      if (phase === lap) endMatch(winner, winnerName);
+    });
     announce(`*** ${winnerName} WINS THE GUN GAME ***`);
     winner.Glow(WINNER_GLOW);
     for (const command of NO_RESPAWN) Console.ServerCommand(command);
@@ -203,9 +200,9 @@ export function ladder({
       })),
     });
     for (const pawn of livePawns()) pawn.SetMoveType(CSMoveType.WALK);
-    levels = new Map();
-    kills = new Map();
-    matchKills = new Map();
+    levels.clear();
+    kills.clear();
+    matchKills.clear();
     const reason = winner.GetTeamNumber() === 2 ? CSRoundEndReason.TERRORISTS_WIN : CSRoundEndReason.CTS_WIN;
     GameRules.TerminateRound(reason, MATCH_END_DELAY_SECONDS);
   }
@@ -217,12 +214,7 @@ export function ladder({
       rules.init();
     },
 
-    saveState: () => ({ levels: [...levels], kills: [...kills], matchKills: [...matchKills] }),
-    restoreState(saved) {
-      levels = new Map(saved.levels);
-      kills = new Map(saved.kills);
-      matchKills = new Map(saved.matchKills ?? []);
-    },
+    players: { levels, kills, matchKills, grenadeRefills, nextThrow },
 
     onRoundStart() {
       GameRules.SetRoundRemainingTime(ENDLESS_ROUND_SECONDS);
@@ -239,14 +231,6 @@ export function ladder({
       levels.set(slot, 0);
       kills.delete(slot);
       matchKills.delete(slot);
-    },
-
-    onPlayerDisconnect({ playerSlot }) {
-      levels.delete(playerSlot);
-      kills.delete(playerSlot);
-      matchKills.delete(playerSlot);
-      grenadeRefills.delete(playerSlot);
-      nextThrow.delete(playerSlot);
     },
 
     // Fires on every spawn
@@ -290,26 +274,23 @@ export function ladder({
 
     onGrenadeThrow({ weapon }) {
       const slot = weapon.GetOwner()?.GetPlayerController()?.GetPlayerSlot();
-      if (slot !== undefined && weapons[levels.get(slot) ?? 0] === GRENADE) {
-        grenadeRefills.set(slot, Instance.GetGameTime() + GRENADE_COOLDOWN_SECONDS);
-      }
+      if (slot === undefined || weapons[levels.get(slot) ?? 0] !== GRENADE) return;
+      grenadeRefills.get(slot)?.cancel();
+      grenadeRefills.set(
+        slot,
+        after(GRENADE_COOLDOWN_SECONDS, () => {
+          // Gone if the player disconnected meanwhile
+          if (!grenadeRefills.delete(slot)) return;
+          const pawn = Instance.GetPlayerController(slot)?.GetPlayerPawn();
+          if (pawn?.IsValid() && weapons[levels.get(slot) ?? 0] === GRENADE) equip(pawn);
+        }),
+      );
     },
 
     onThink() {
       rules.onThink();
-      const now = Instance.GetGameTime();
-      if (phase.kind === "victoryLap") {
-        if (now >= phase.endsAt) endMatch(phase.winner, phase.winnerName);
-        else holdStill(phase);
-      }
-      if (phase.kind === "playing") throwGrenades(now);
-
-      for (const [slot, due] of grenadeRefills) {
-        if (now < due) continue;
-        grenadeRefills.delete(slot);
-        const pawn = Instance.GetPlayerController(slot)?.GetPlayerPawn();
-        if (pawn?.IsValid() && weapons[levels.get(slot) ?? 0] === GRENADE) equip(pawn);
-      }
+      if (phase.kind === "victoryLap") holdStill(phase);
+      if (phase.kind === "playing") throwGrenades(Instance.GetGameTime());
     },
   };
 }
