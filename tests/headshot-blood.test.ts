@@ -35,3 +35,19 @@ test("a headshot sprays from the victim's head, each hit on the next effect; a b
     ["second", "Start"],
   ]);
 });
+
+test("a map short of effects says which name is missing, once, and that headshot stays clean", () => {
+  engine.entities.set("wts_blood_0", effect());
+  createGamemode({ name: "Test", plugins: [headshotBlood({ pool: 2 })] });
+  engine.activate();
+  const victim = engine.addPlayer("Bob").pawn;
+  const headshot = () =>
+    engine.fire("OnPlayerDamage", { player: victim, damage: 50, damageTypes: 0, damageFlags: 0, hitGroup: CSHitGroup.HEAD });
+
+  for (let i = 0; i < 4; i++) headshot();
+
+  expect(engine.inputs).toHaveLength(4);
+  expect(engine.logs.filter((line) => line.includes("no info_particle_system"))).toEqual([
+    "[headshotBlood] no info_particle_system named wts_blood_1; those headshots stay clean",
+  ]);
+});

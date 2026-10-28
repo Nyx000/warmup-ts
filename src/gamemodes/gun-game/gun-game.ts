@@ -15,9 +15,9 @@ import { headshotBlood } from "../../plugins/combat/headshot-blood";
 import { headshotSound } from "../../plugins/combat/headshot-sound";
 import { headshotsOnly } from "../../plugins/combat/headshots-only";
 import { moneyLog } from "../../plugins/economy/money-log";
-import { spawnSound } from "../../plugins/players/spawn-sound";
+import { spawnSound } from "../../plugins/hud/spawn-sound";
 import { randomSpawns } from "../../plugins/players/random-spawns";
-import { welcome } from "../../plugins/players/welcome";
+import { welcome } from "../../plugins/hud/welcome";
 import { deInferno } from "../../spawns/de_inferno";
 import { ladder } from "./ladder";
 
@@ -54,7 +54,7 @@ const WEAPONS = [
   "weapon_knife",
 ];
 
-/** Sounds the shooter hears on a headshot, one picked at random each time: every short bell in the game. */
+/** Sounds played from the shooter on a headshot, one picked at random each time: every short bell in the game. */
 const HEADSHOT_SOUNDS = [
   "tr.BellImpact",
   "tr.BellNormal",
