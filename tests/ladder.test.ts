@@ -112,6 +112,8 @@ test("after the victory lap the match ends on the scoreboard with its stats, and
   expect(bob.moveType).toBe(CSMoveType.WALK);
   const [[reason, delay]] = engine.roundEnds;
   expect(reason).toBe(CSRoundEndReason.TERRORISTS_WIN);
+  // A 0:0 game over reads "Match Cancelled"
+  expect(engine.scores).toEqual([[2, 1]]);
   // With no restart delay the engine often skips the scoreboard (measured 2026-10-27)
   expect(delay).toBeGreaterThan(0);
 

@@ -189,8 +189,13 @@ export function ladder({
     levels.clear();
     kills.clear();
     matchKills.clear();
-    const reason = winner.GetTeamNumber() === 2 ? CSRoundEndReason.TERRORISTS_WIN : CSRoundEndReason.CTS_WIN;
-    GameRules.TerminateRound(reason, MATCH_END_DELAY_SECONDS);
+    const team = winner.GetTeamNumber() === 2 ? 2 : 3;
+    // A 0:0 game over shows "Match Cancelled" to everyone (seen 2026-10-28), so the winner's team
+    // gets the point, and both team names become the winner's for the end-of-match banner
+    GameRules.AddTeamScore(team, 1);
+    const bannerName = winnerName.replace(/["';\\]/g, "");
+    for (const command of [`mp_teamname_1 "${bannerName}"`, `mp_teamname_2 "${bannerName}"`]) Console.ServerCommand(command);
+    GameRules.TerminateRound(team === 2 ? CSRoundEndReason.TERRORISTS_WIN : CSRoundEndReason.CTS_WIN, MATCH_END_DELAY_SECONDS);
   }
 
   return {
@@ -205,7 +210,7 @@ export function ladder({
     onRoundStart() {
       GameRules.SetRoundRemainingTime(ENDLESS_ROUND_SECONDS);
       if (phase.kind === "ending") {
-        for (const command of ["mp_maxrounds 0", ...RESPAWN]) Console.ServerCommand(command);
+        for (const command of ["mp_maxrounds 0", 'mp_teamname_1 ""', 'mp_teamname_2 ""', ...RESPAWN]) Console.ServerCommand(command);
       }
       phase = { kind: "playing" };
     },

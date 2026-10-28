@@ -1,8 +1,8 @@
 /**
  * Pistol gun game, headshots only: free-for-all, three kills per weapon up a ladder of nine
  * pistols, an HE grenade and the knife. A knife kill on the last weapon wins. Players spawn
- * at random deathmatch spawns after a 10 second warmup, with no freeze time. Everyone joins
- * CT straight away, with no team pick.
+ * at random deathmatch spawn points, away from other players, after a 10 second warmup, with
+ * no freeze time. Everyone joins CT straight away, with no team pick.
  */
 
 import type { GamemodeConfig } from "../../core/gamemode";
@@ -12,6 +12,9 @@ import { teamRules, Teams } from "../../core/rules";
 import type { TeamRulesConfig } from "../../core/rules";
 import { headshotsOnly } from "../../plugins/combat/headshots-only";
 import { moneyLog } from "../../plugins/economy/money-log";
+import { randomSpawns } from "../../plugins/players/random-spawns";
+import { welcome } from "../../plugins/players/welcome";
+import { deInferno } from "../../spawns/de_inferno";
 import { ladder } from "./ladder";
 
 // ── Settings: edit these to change how a match plays ──
@@ -30,8 +33,6 @@ const SERVER: Record<string, ConvarValue> = {
   mp_warmuptime: 10,
   // Seconds everyone stands frozen at the start of a round
   mp_freezetime: 0,
-  // 1 spawns players at random deathmatch spawn points instead of the team spawns
-  mp_randomspawn: 1,
 };
 
 /** Weapons in the order players climb them; a knife kill on the last one wins. */
@@ -55,12 +56,14 @@ const KILLS_PER_WEAPON = 3;
 // ── The gamemode: its name and its plugins, which run in this order ──
 
 export const pistolGunGame: GamemodeConfig = {
-  name: "Pistol Gun Game",
+  name: "Pistols Only Gun Game",
   plugins: [
     teamRules(TEAMS),
     convars(SERVER),
     ladder({ weapons: WEAPONS, killsPerLevel: KILLS_PER_WEAPON }),
     headshotsOnly(),
     moneyLog(),
+    welcome((name) => `Welcome ${name} to Pistols Only Gun Game, running on WarmupTS`),
+    randomSpawns({ maps: { de_inferno: deInferno } }),
   ],
 };
