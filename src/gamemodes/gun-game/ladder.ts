@@ -45,6 +45,8 @@ const RULES = [
   "mp_maxrounds 0",
   "mp_give_player_c4 0",
   "mp_buytime 0",
+  // 3 means nobody can buy
+  "sv_buy_status_override 3",
   "mp_t_default_secondary \"\"",
   "mp_ct_default_secondary \"\"",
   "mp_death_drop_gun 0",
