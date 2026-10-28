@@ -75,6 +75,20 @@ test.each([
   expect(ends).toBe(expected);
 });
 
+test.each([
+  ["fires once when the warmup ends", true, 1],
+  ["doesn't fire when the map starts after it", false, 0],
+])("onWarmupEnd %s", (_, startsInWarmup, expected) => {
+  engine.warmupPeriod = startsInWarmup;
+  let ends = 0;
+  start({ name: "a", onWarmupEnd: () => void ends++ });
+  engine.tick();
+  engine.warmupPeriod = false;
+  engine.tick();
+  engine.tick();
+  expect(ends).toBe(expected);
+});
+
 test("a hot reload carries plugin state into the newly loaded plugins and restarts thinking", () => {
   const calls: string[] = [];
   const counter = (): Plugin<number> => {

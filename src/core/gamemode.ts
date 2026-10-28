@@ -5,6 +5,7 @@
 import { Console, GameRules, Instance } from "cs_script/point_script";
 import type { ModfiyPlayerDamageResult, ModifyPlayerDamageEvent } from "cs_script/point_script";
 import { ENGINE_EVENTS, Plugin } from "./plugin";
+import { cancelAllTimers, runDueTimers } from "./timers";
 
 export interface GamemodeConfig {
   /** Prefix for console logs. */
@@ -15,7 +16,13 @@ export interface GamemodeConfig {
   thinkInterval?: number;
 }
 
-type Hook = Exclude<keyof Plugin, "name">;
+type Hook = Exclude<keyof Plugin, "name" | "players">;
+
+/** What a hot reload carries: plugin saveState results, and persistent player stores as [slot, value] pairs. */
+interface Saved {
+  plugins: Record<string, unknown>;
+  players: Record<string, Record<string, [number, unknown][]>>;
+}
 
 /**
  * Call at the top level of the entry script, not inside a callback: a hot reload clears
@@ -23,6 +30,8 @@ type Hook = Exclude<keyof Plugin, "name">;
  */
 export function createGamemode({ name, plugins, thinkInterval = 0.05 }: GamemodeConfig): void {
   const log = (message: string) => Console.Log(`[${name}] ${message}`);
+  // Timers are module state shared by every plugin, and this gamemode owns them
+  cancelAllTimers();
 
   const names = plugins.map((plugin) => plugin.name);
   const duplicate = names.find((pluginName, index) => names.indexOf(pluginName) !== index);
@@ -54,7 +63,16 @@ export function createGamemode({ name, plugins, thinkInterval = 0.05 }: Gamemode
       log(`Instance.${event} doesn't exist in this CS2 build; ${hook} will never fire`);
       continue;
     }
-    register.call(Instance, (arg) => dispatch(hook, arg));
+    register.call(Instance, (arg) => {
+      dispatch(hook, arg);
+      // After the dispatch, so a plugin can still read the player's data in onPlayerDisconnect
+      if (event === "OnPlayerDisconnect") {
+        const { playerSlot } = arg as { playerSlot: number };
+        for (const plugin of plugins) {
+          for (const store of Object.values(plugin.players ?? {})) store.delete(playerSlot);
+        }
+      }
+    });
   }
 
   // Each plugin sees the damage as changed by the plugins before it; an abort ends the chain.
@@ -82,38 +100,53 @@ export function createGamemode({ name, plugins, thinkInterval = 0.05 }: Gamemode
     return Object.keys(result).length > 0 ? result : undefined;
   });
 
-  let wasFreezePeriod = false;
+  // cs_script has no event for these; each hook fires when the think loop sees its state turn false
+  const watchers: { hook: Hook; isOn: () => boolean; wasOn: boolean }[] = [
+    { hook: "onFreezeTimeEnd", isOn: () => GameRules.IsFreezePeriod(), wasOn: false },
+    { hook: "onWarmupEnd", isOn: () => GameRules.IsWarmupPeriod(), wasOn: false },
+  ];
 
   Instance.SetThink(() => {
     // Schedule first, so nothing below can stop the loop
-    Instance.SetNextThink(Instance.GetGameTime() + thinkInterval);
+    const now = Instance.GetGameTime();
+    Instance.SetNextThink(now + thinkInterval);
 
-    const isFreezePeriod = GameRules.IsFreezePeriod();
-    if (wasFreezePeriod && !isFreezePeriod) dispatch("onFreezeTimeEnd");
-    wasFreezePeriod = isFreezePeriod;
+    for (const watcher of watchers) {
+      const isOn = watcher.isOn();
+      if (watcher.wasOn && !isOn) dispatch(watcher.hook);
+      watcher.wasOn = isOn;
+    }
 
+    runDueTimers(now, (error) => log(`A timer threw: ${error}`));
     dispatch("onThink");
   });
 
   function startThinking(): void {
-    wasFreezePeriod = GameRules.IsFreezePeriod();
+    for (const watcher of watchers) watcher.wasOn = watcher.isOn();
     Instance.SetNextThink(Instance.GetGameTime());
   }
 
   // before runs in the old script, after in the newly loaded one
-  Instance.OnScriptReload<Record<string, unknown>>({
+  Instance.OnScriptReload<Saved>({
     before: () => {
       Instance.SetNextThink(-1);
       dispatch("dispose");
-      const saved: Record<string, unknown> = {};
+      cancelAllTimers();
+      const saved: Saved = { plugins: {}, players: {} };
       for (const plugin of plugins) {
-        if (plugin.saveState) saved[plugin.name] = call(plugin, "saveState");
+        if (plugin.saveState) saved.plugins[plugin.name] = call(plugin, "saveState");
+        for (const [key, store] of Object.entries(plugin.players ?? {})) {
+          if (store.persist) (saved.players[plugin.name] ??= {})[key] = [...store];
+        }
       }
       return saved;
     },
     after: (saved) => {
       for (const plugin of plugins) {
-        if (saved?.[plugin.name] !== undefined) call(plugin, "restoreState", saved[plugin.name]);
+        if (saved?.plugins?.[plugin.name] !== undefined) call(plugin, "restoreState", saved.plugins[plugin.name]);
+        for (const [key, store] of Object.entries(plugin.players ?? {})) {
+          for (const [slot, value] of saved?.players?.[plugin.name]?.[key] ?? []) store.set(slot, value);
+        }
       }
       dispatch("init");
       startThinking();

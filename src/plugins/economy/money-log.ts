@@ -2,23 +2,19 @@
  * Logs a player's money to the console each time it changes.
  */
 
-import { Console, Instance } from "cs_script/point_script";
+import { Console } from "cs_script/point_script";
+import { connectedPlayers, playerStore } from "../../core/players";
 import type { Plugin } from "../../core/plugin";
 
-const MAX_SLOTS = 64;
-
 export function moneyLog(): Plugin {
-  const last = new Map<number, number>();
+  const last = playerStore<number>();
 
   return {
     name: "moneyLog",
-    onPlayerDisconnect({ playerSlot }) {
-      last.delete(playerSlot);
-    },
+    players: { last },
     onThink() {
-      for (let slot = 0; slot < MAX_SLOTS; slot++) {
-        const controller = Instance.GetPlayerController(slot);
-        if (!controller?.IsValid()) continue;
+      for (const controller of connectedPlayers()) {
+        const slot = controller.GetPlayerSlot();
         const money = controller.GetMoneySpendableNow();
         if (last.get(slot) === money) continue;
         last.set(slot, money);

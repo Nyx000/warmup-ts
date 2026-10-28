@@ -7,6 +7,7 @@
  */
 
 import type { IPointScript } from "cs_script/point_script";
+import type { PlayerStore } from "./players";
 
 /**
  * The Instance callbacks the gamemode registers once and passes to every plugin.
@@ -87,6 +88,12 @@ export interface Plugin<TState = unknown> extends EngineHooks {
   saveState?(): TState;
   restoreState?(state: TState): void;
 
+  /**
+   * Per-player data. An entry goes when its player disconnects (after onPlayerDisconnect
+   * has run), and persistent stores are carried across a hot reload like saveState.
+   */
+  players?: Record<string, PlayerStore<unknown>>;
+
   /** After a hot reload. onPlayerActivate doesn't fire again for players already connected. */
   onHotReloadComplete?(): void;
 
@@ -95,4 +102,7 @@ export interface Plugin<TState = unknown> extends EngineHooks {
 
   /** cs_script has no callback for this; the think loop watches GameRules.IsFreezePeriod(). */
   onFreezeTimeEnd?(): void;
+
+  /** Likewise for GameRules.IsWarmupPeriod(). */
+  onWarmupEnd?(): void;
 }

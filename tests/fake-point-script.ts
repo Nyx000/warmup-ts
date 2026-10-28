@@ -58,6 +58,9 @@ export class CSPlayerController {
   GetPlayerSlot() { return this.slot; }
   GetPlayerName() { return this.name; }
   IsBot() { return this.bot; }
+  /** false once the player has left, though the controller stays in the list. */
+  connected = true;
+  IsConnected() { return this.connected; }
   GetPlayerPawn() { return this.pawn; }
   JoinTeam(team: number) { this.team = team; }
 }
@@ -68,6 +71,7 @@ export const engine = {
   /** Console.ServerCommand commands, in order. */
   commands: [] as string[],
   freezePeriod: false,
+  warmupPeriod: false,
   /** Convar values, set by Console.SetConvar or by a "name value" Console.ServerCommand. */
   convars: new Map<string, unknown>(),
   /** Convars the server ignores writes to, as a protected one would. */
@@ -90,6 +94,7 @@ export const engine = {
     this.logs.length = 0;
     this.commands.length = 0;
     this.freezePeriod = false;
+    this.warmupPeriod = false;
     this.roundEnds.length = 0;
     this.grenades.length = 0;
     this.convars.clear();
@@ -176,6 +181,7 @@ export const Console = new Proxy(consoleMethods, {
 
 export const GameRules = {
   IsFreezePeriod: () => engine.freezePeriod,
+  IsWarmupPeriod: () => engine.warmupPeriod,
   GetRoundsPlayed: () => 0,
   SetRoundRemainingTime: () => {},
   TerminateRound: (reason: number, delay?: number) => void engine.roundEnds.push([reason, delay]),
