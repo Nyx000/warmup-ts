@@ -6,7 +6,8 @@
  */
 
 import type { GamemodeConfig } from "../../core/gamemode";
-import { serverCommands, teamRules, Teams } from "../../core/rules";
+import { convars } from "../../core/convars";
+import { teamRules, Teams } from "../../core/rules";
 import { headshotsOnly } from "../../plugins/combat/headshots-only";
 import { moneyLog } from "../../plugins/economy/money-log";
 import { ladder } from "./ladder";
@@ -15,7 +16,7 @@ export const pistolGunGame: GamemodeConfig = {
   name: "Pistol Gun Game",
   plugins: [
     teamRules({ autoAssign: Teams.CT, damage: "all" }),
-    serverCommands(["mp_warmuptime 10", "mp_freezetime 0", "mp_randomspawn 1"]),
+    convars({ mp_warmuptime: 10, mp_freezetime: 0, mp_randomspawn: 1 }),
     ladder(),
     headshotsOnly(),
     moneyLog(),

@@ -12,6 +12,14 @@ function start(weapons = LADDER): void {
   engine.activate();
 }
 
+test("the ladder's server rules are set and checked, an empty default pistol included", () => {
+  start();
+  engine.tick();
+  expect(engine.convars.get("mp_t_default_secondary")).toBe("");
+  expect(engine.convars.get("sv_infinite_ammo")).toBe(2);
+  expect(engine.logs).toContain("[ladder] All 12 convars read back as set (Console.SetConvar)");
+});
+
 function join(name: string): CSPlayerPawn {
   const player = engine.addPlayer(name);
   engine.fire("OnPlayerConnect", { player });

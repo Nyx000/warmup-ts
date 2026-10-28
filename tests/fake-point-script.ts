@@ -68,13 +68,17 @@ export const engine = {
   /** Console.ServerCommand commands, in order. */
   commands: [] as string[],
   freezePeriod: false,
-  /** Console.SetConvar values. */
+  /** Convar values, set by Console.SetConvar or by a "name value" Console.ServerCommand. */
   convars: new Map<string, unknown>(),
+  /** Convars the server ignores writes to, as a protected one would. */
+  refused: new Set<string>(),
+  /** On/off convars: like the real server, GetConvarNumber can't read them. */
+  booleans: new Set<string>(),
   /** GameRules.TerminateRound calls: [reason, delay]. */
   roundEnds: [] as [number, number | undefined][],
   /** Instance.SpawnGrenadeProjectile configs, in order. */
   grenades: [] as { type: number; thrower?: CSPlayerPawn; throwStrength?: number }[],
-  /** Instance.On* callbacks to leave out, as an older CS2 build would. */
+  /** Instance.On* callbacks and "Console.<method>" names to leave out, as an older CS2 build would. */
   unsupported: new Set<string>(),
 
   reset(): void {
@@ -89,6 +93,8 @@ export const engine = {
     this.roundEnds.length = 0;
     this.grenades.length = 0;
     this.convars.clear();
+    this.refused.clear();
+    this.booleans.clear();
     this.unsupported.clear();
   },
 
@@ -146,11 +152,27 @@ export const Instance = new Proxy(instanceMethods, {
   },
 });
 
-export const Console = {
+function setConvar(name: string, value: unknown): void {
+  if (!engine.refused.has(name)) engine.convars.set(name, value);
+}
+
+const consoleMethods: Record<string, unknown> = {
   Log: (message: string) => void engine.logs.push(message),
-  ServerCommand: (command: string) => void engine.commands.push(command),
-  SetConvar: (name: string, value: unknown) => void engine.convars.set(name, value),
+  ServerCommand(command: string) {
+    engine.commands.push(command);
+    const [, name, value] = command.match(/^(\S+) "?(.*?)"?$/) ?? [];
+    if (name) setConvar(name, value);
+  },
+  SetConvar: setConvar,
+  GetConvarNumber: (name: string) =>
+    engine.convars.has(name) && !engine.booleans.has(name) ? Number(engine.convars.get(name)) : undefined,
+  GetConvarBoolean: (name: string) => (engine.convars.has(name) ? Number(engine.convars.get(name)) !== 0 : undefined),
+  GetConvarString: (name: string) => (engine.convars.has(name) ? String(engine.convars.get(name)) : undefined),
 };
+
+export const Console = new Proxy(consoleMethods, {
+  get: (target, key) => (engine.unsupported.has(`Console.${String(key)}`) ? undefined : target[key as string]),
+});
 
 export const GameRules = {
   IsFreezePeriod: () => engine.freezePeriod,
