@@ -29,7 +29,20 @@ export default [
       "@typescript-eslint/no-non-null-assertion": "warn",
       // cs_script.d.ts marks APIs Valve will remove; catch them at lint time
       "@typescript-eslint/no-deprecated": "error",
+      // createGamemode owns these; a second registration would replace its handler
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[object.name='Instance'][property.name=/^(SetThink|SetNextThink|On(?!ScriptInput$).*)$/]",
+          message:
+            "Only createGamemode may register this Instance callback; registering it here would replace the core's handler. Use the plugin hook instead (onThink, init, onRoundStart, ...). Instance.OnScriptInput is the exception.",
+        },
+      ],
     },
+  },
+  {
+    files: ["src/core/**/*.ts"],
+    rules: { "no-restricted-syntax": "off" },
   },
   {
     ignores: ["node_modules/**", "dist/**", "src/types/cs_script.d.ts"],
