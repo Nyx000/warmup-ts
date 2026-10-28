@@ -27,21 +27,25 @@ export class CSPlayerPawn {
   moveType: number = CSMoveType.WALK;
   position = { x: 0, y: 0, z: 0 };
   glowing = false;
+  name = "";
   /** CSInputs bits held down. */
   inputs = 0;
 
   constructor(private readonly controller: CSPlayerController) {}
 
   IsValid() { return true; }
+  GetClassName() { return "player"; }
   IsAlive() { return this.alive; }
   GetTeamNumber() { return this.team; }
   GetMoveType() { return this.moveType; }
   SetMoveType(moveType: number) { this.moveType = moveType; }
   GetAbsOrigin() { return { ...this.position }; }
+  GetEyePosition() { return { ...this.position, z: this.position.z + 64 }; }
   Teleport({ position }: { position?: { x: number; y: number; z: number } }) { if (position) this.position = { ...position }; }
   Glow() { this.glowing = true; }
   Unglow() { this.glowing = false; }
   GetPlayerController() { return this.controller; }
+  SetEntityName(name: string) { this.name = name; }
   IsInputPressed(inputs: number) { return (this.inputs & inputs) !== 0; }
   DestroyWeapons() { this.weapons = []; }
   GiveNamedItem(name: string) { this.weapons.push(name); }
@@ -86,6 +90,10 @@ export const engine = {
   grenades: [] as { type: number; thrower?: CSPlayerPawn; throwStrength?: number }[],
   /** Instance.On* callbacks and "Console.<method>" names to leave out, as an older CS2 build would. */
   unsupported: new Set<string>(),
+  /** Map entities Instance.FindEntityByName and FindEntitiesByName can find, by name. */
+  entities: new Map<string, object>(),
+  /** Instance.EntFireAtTarget calls, in order. */
+  inputs: [] as { target: object; input: string; value?: unknown }[],
   /** Map entities Instance.FindEntitiesByClass can find, by class. */
   classes: new Map<string, object[]>(),
   /** What Instance.GetMapName returns. */
@@ -108,6 +116,8 @@ export const engine = {
     this.refused.clear();
     this.booleans.clear();
     this.unsupported.clear();
+    this.entities.clear();
+    this.inputs.length = 0;
     this.classes.clear();
     this.mapName = "";
   },
@@ -152,6 +162,9 @@ const instanceMethods: Record<string, unknown> = {
   GetAllPlayerControllers: () => [...players],
   GetPlayerController: (slot: number) => players.find((player) => player.GetPlayerSlot() === slot),
   SpawnGrenadeProjectile: (config: (typeof engine.grenades)[number]) => void engine.grenades.push(config),
+  FindEntityByName: (name: string) => engine.entities.get(name),
+  FindEntitiesByName: (name: string) => (engine.entities.has(name) ? [engine.entities.get(name)] : []),
+  EntFireAtTarget: (config: (typeof engine.inputs)[number]) => void engine.inputs.push(config),
   GetMapName: () => engine.mapName,
   FindEntitiesByClass: (className: string) => engine.classes.get(className) ?? [],
 };

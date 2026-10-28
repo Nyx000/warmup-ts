@@ -2,7 +2,8 @@
  * PistolGG, a pistol gun game, headshots only: free-for-all, three kills per weapon up a ladder
  * of nine pistols, an HE grenade and the knife. A knife kill on the last weapon wins. Players
  * spawn at random points away from other players after a 10 second warmup, with no freeze time.
- * Everyone joins CT straight away, with no team pick.
+ * Everyone joins CT straight away, with no team pick. A sound plays from each player as they
+ * spawn, and headshots spray blood and ring a random bell for the shooter.
  */
 
 import type { GamemodeConfig } from "../../core/gamemode";
@@ -10,8 +11,11 @@ import { convars } from "../../core/convars";
 import type { ConvarValue } from "../../core/convars";
 import { teamRules, Teams } from "../../core/rules";
 import type { TeamRulesConfig } from "../../core/rules";
+import { headshotBlood } from "../../plugins/combat/headshot-blood";
+import { headshotSound } from "../../plugins/combat/headshot-sound";
 import { headshotsOnly } from "../../plugins/combat/headshots-only";
 import { moneyLog } from "../../plugins/economy/money-log";
+import { spawnSound } from "../../plugins/players/spawn-sound";
 import { randomSpawns } from "../../plugins/players/random-spawns";
 import { welcome } from "../../plugins/players/welcome";
 import { deInferno } from "../../spawns/de_inferno";
@@ -50,6 +54,18 @@ const WEAPONS = [
   "weapon_knife",
 ];
 
+/** Sounds the shooter hears on a headshot, one picked at random each time: every short bell in the game. */
+const HEADSHOT_SOUNDS = [
+  "tr.BellImpact",
+  "tr.BellNormal",
+  "tr.TimerBell",
+  "inferno.bell_c",
+  "inferno.bell_d",
+  "inferno.bell_e",
+  "inferno.bell_f",
+  "inferno.bell_g",
+];
+
 /** Kills with one weapon before moving to the next. A knife kill always moves a player up at once. */
 const KILLS_PER_WEAPON = 3;
 
@@ -62,8 +78,11 @@ export const pistolGG: GamemodeConfig = {
     convars(SERVER),
     ladder({ weapons: WEAPONS, killsPerLevel: KILLS_PER_WEAPON }),
     headshotsOnly(),
+    headshotBlood(),
+    headshotSound({ sounds: HEADSHOT_SOUNDS }),
     moneyLog(),
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
     randomSpawns({ maps: { de_inferno: deInferno } }),
+    spawnSound(),
   ],
 };
