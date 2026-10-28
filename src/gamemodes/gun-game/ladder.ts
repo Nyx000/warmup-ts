@@ -20,6 +20,7 @@ import {
   Instance,
 } from "cs_script/point_script";
 import type { Vector } from "cs_script/point_script";
+import { convars } from "../../core/convars";
 import type { Plugin } from "../../core/plugin";
 
 export const PISTOL_LADDER = [
@@ -39,20 +40,21 @@ export const PISTOL_LADDER = [
 const RESPAWN = ["mp_respawn_on_death_t 1", "mp_respawn_on_death_ct 1"];
 const NO_RESPAWN = ["mp_respawn_on_death_t 0", "mp_respawn_on_death_ct 0"];
 
-const RULES = [
-  ...RESPAWN,
-  "mp_ignore_round_win_conditions 1",
-  "mp_maxrounds 0",
-  "mp_give_player_c4 0",
-  "mp_buytime 0",
+const RULES = {
+  mp_respawn_on_death_t: 1,
+  mp_respawn_on_death_ct: 1,
+  mp_ignore_round_win_conditions: 1,
+  mp_maxrounds: 0,
+  mp_give_player_c4: 0,
+  mp_buytime: 0,
   // 3 means nobody can buy
-  "sv_buy_status_override 3",
-  "mp_t_default_secondary \"\"",
-  "mp_ct_default_secondary \"\"",
-  "mp_death_drop_gun 0",
-  "mp_death_drop_grenade 0",
-  "sv_infinite_ammo 2",
-];
+  sv_buy_status_override: 3,
+  mp_t_default_secondary: "",
+  mp_ct_default_secondary: "",
+  mp_death_drop_gun: 0,
+  mp_death_drop_grenade: 0,
+  sv_infinite_ammo: 2,
+};
 
 const GRENADE = "weapon_hegrenade";
 // Between a player's throws, and between a bot's throw and its next grenade
@@ -109,6 +111,7 @@ export function ladder({
   killsPerLevel = 3,
   onMatchEnd = () => {},
 }: LadderConfig = {}): Plugin<LadderState> {
+  const rules = convars(RULES, "ladder");
   let levels = new Map<number, number>();
   let kills = new Map<number, number>();
   let matchKills = new Map<number, number>();
@@ -211,7 +214,7 @@ export function ladder({
     name: "ladder",
 
     init() {
-      for (const command of RULES) Console.ServerCommand(command);
+      rules.init();
     },
 
     saveState: () => ({ levels: [...levels], kills: [...kills], matchKills: [...matchKills] }),
@@ -293,6 +296,7 @@ export function ladder({
     },
 
     onThink() {
+      rules.onThink();
       const now = Instance.GetGameTime();
       if (phase.kind === "victoryLap") {
         if (now >= phase.endsAt) endMatch(phase.winner, phase.winnerName);

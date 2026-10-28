@@ -127,10 +127,17 @@ Each hook gets Valve's event object unchanged: `Instance.OnRoundEnd` becomes
 - `onModifyPlayerDamage` is a chain. Each plugin sees the damage as the plugins before it left it, and
   returning `abort` stops it there.
 - `Instance.OnScriptInput` is keyed by input name, so a plugin registers it itself in `init()`.
+- `Instance.SetThink`, `SetNextThink` and every other `Instance.On*` callback belong to `createGamemode`:
+  a plugin that registers one would replace the core's handler, so the lint rejects it outside `src/core/`.
 - `onFreezeTimeEnd` has no engine event behind it. It fires when the think loop sees
   `GameRules.IsFreezePeriod()` turn false.
 
-Without `teamRules` or `serverCommands`, WarmupTS leaves the server's rules alone.
+Without `teamRules`, `convars` or `serverCommands`, WarmupTS leaves the server's rules alone.
+
+`convars({ mp_freezetime: 0, mp_t_default_secondary: "" })` sets server settings and then reads each one
+back. The console shows which way they were set (`Console.SetConvar`, or `Console.ServerCommand` on a CS2
+build without it) and names every setting the server did not take. Use `serverCommands` for anything
+that is a command rather than a convar.
 
 ## Things that will bite you
 
