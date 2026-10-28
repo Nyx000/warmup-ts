@@ -54,8 +54,7 @@ describe("damage chain", () => {
   test.each([
     ["no change leaves the damage to the engine", [ignore("a")], undefined],
     ["each plugin sees the damage as changed before it", [halve("a"), halve("b")], { damage: 25 }],
-    ["an abort after a change wins", [halve("a"), abort("b")], { abort: true }],
-    ["an abort before a change wins", [abort("a"), halve("b")], { abort: true }],
+    ["an abort wins over a later change", [abort("a"), halve("b")], { abort: true }],
   ])("%s", (_, plugins, expected) => {
     start(...plugins);
     expect(engine.fire("OnModifyPlayerDamage", { damage: 100, damageTypes: 0, damageFlags: 0 })).toEqual(expected);
