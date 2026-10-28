@@ -54,6 +54,9 @@ const WEAPONS = [
   "weapon_knife",
 ];
 
+/** Sounds played together from each player as they spawn: a squawk and the loudest chicken sound. */
+const SPAWN_SOUNDS = ["Chicken.Panic", "Chicken.FlapWings"];
+
 /** Sounds played from the shooter on a headshot, one picked at random each time: every short bell in the game. */
 const HEADSHOT_SOUNDS = [
   "tr.BellImpact",
@@ -83,6 +86,6 @@ export const pistolGG: GamemodeConfig = {
     moneyLog(),
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
     randomSpawns({ maps: { de_inferno: deInferno } }),
-    spawnSound(),
+    spawnSound({ sounds: SPAWN_SOUNDS }),
   ],
 };
