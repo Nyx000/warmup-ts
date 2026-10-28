@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+bun.lockb
+bun.lock
+
+# Build outputs
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Generated HTML guides
+FRAMEWORK_GUIDE*.html
+
+# Game content (maps, models, sounds, HUD layouts) lives in the CS2 addon, never in this repo
+assets/
+maps/
+materials/
+models/
+panorama/
+particles/
+postprocess/
+sounds/
+soundevents/
+*.vpk
+
+# PID files from dev scripts
+.pids/
+
+# Archived custom implementations (reference only)
+.archive/
+
+# Throwaway experiments
+spikes/
+
+# Crash dumps
+*.mdmp

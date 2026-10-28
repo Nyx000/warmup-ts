@@ -1,0 +1,43 @@
+{
+  "name": "warmup-ts",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "TypeScript gamemode framework for CS2 cs_script, with plugins and hot reload",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nyx000/warmup-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nyx000/warmup-ts/issues"
+  },
+  "homepage": "https://github.com/Nyx000/warmup-ts#readme",
+  "scripts": {
+    "dev": "bun tools/build/dev.mjs",
+    "build": "tsc --noEmit && bun tools/build/compile-all.mjs",
+    "deploy": "bun tools/build/compile-all.mjs && bun tools/build/watch-deploy.mjs --once",
+    "tools": "bun tools/launch-cs2.mjs",
+    "check": "eslint src/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored && tsc --noEmit && bun test",
+    "lint": "eslint src/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored",
+    "format": "eslint src/**/*.ts --ignore-pattern 'src/types/cs_script.d.ts' --no-warn-ignored --fix",
+    "sync-types": "bun tools/maintenance/sync-type-definitions.mjs",
+    "clean": "rm -rf dist/*.js dist/*.vjs",
+    "test": "bun test"
+  },
+  "keywords": [
+    "cs2",
+    "counter-strike-2",
+    "cs_script",
+    "source2",
+    "workshop",
+    "modding"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/node": "^25.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
+    "@typescript-eslint/parser": "^8.52.0",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.3"
+  }
+}
