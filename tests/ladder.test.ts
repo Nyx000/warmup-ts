@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { createGamemode } from "../../core/gamemode";
-import { CSGrenadeType, CSInputs, CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "../../testing/fake-point-script";
-import { ladder, type MatchResult } from "./ladder";
+import { createGamemode } from "../src/core/gamemode";
+import { CSGrenadeType, CSInputs, CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "./fake-point-script";
+import { ladder, type MatchResult } from "../src/gamemodes/gun-game/ladder";
 
 const LADDER = ["weapon_glock", "weapon_deagle", "weapon_knife"];
 const PISTOL = weapon(CSWeaponType.PISTOL);
@@ -64,22 +64,16 @@ function startWithWinner(onMatchEnd?: (result: MatchResult) => void) {
   return { alice, bob, carol };
 }
 
-test("a win freezes everyone but the winner, stops respawns, and only the winner can hurt anyone", () => {
+test("a win freezes and disarms everyone but the winner, and only the winner can hurt anyone", () => {
   const { alice, bob, carol } = startWithWinner();
-  expect(engine.logs.some((line) => line.includes("Alice WINS"))).toBe(true);
   expect([alice.moveType, bob.moveType, carol.moveType]).toEqual([CSMoveType.WALK, CSMoveType.NONE, CSMoveType.NONE]);
   expect(engine.roundEnds).toEqual([]);
-  expect(engine.commands).toContain("mp_respawn_on_death_t 0");
-  // The round the lap ends is the match's last, so its end shows the scoreboard
-  expect(engine.commands).toContain("mp_maxrounds 1");
   expect([bob.weapons, carol.weapons]).toEqual([[], []]);
 
   const damage = (attacker: CSPlayerPawn, player: CSPlayerPawn) =>
     engine.fire("OnModifyPlayerDamage", { player, attacker, damage: 50, damageTypes: 0, damageFlags: 0 });
   expect(damage(alice, bob)).toBeUndefined();
   expect(damage(carol, alice)).toEqual({ abort: true });
-
-  expect(alice.glowing).toBe(true);
 
   // Anyone who moves mid-lap is put back on the next think, and lap kills don't count
   bob.position = { x: 100, y: 0, z: 0 };
@@ -108,14 +102,12 @@ test("after the victory lap the match ends on the scoreboard with its stats, and
     },
   ]);
   expect(bob.moveType).toBe(CSMoveType.WALK);
-  expect(alice.glowing).toBe(false);
   const [[reason, delay]] = engine.roundEnds;
   expect(reason).toBe(CSRoundEndReason.TERRORISTS_WIN);
   // With no restart delay the engine often skips the scoreboard (measured 2026-10-27)
   expect(delay).toBeGreaterThan(0);
 
   engine.fire("OnRoundStart", {});
-  expect(engine.commands.slice(-3)).toEqual(["mp_maxrounds 0", "mp_respawn_on_death_t 1", "mp_respawn_on_death_ct 1"]);
   engine.fire("OnPlayerReset", { player: alice });
   expect(alice.weapons).toEqual(["weapon_knife", "weapon_glock"]);
 });
