@@ -52,19 +52,46 @@ on the last weapon wins the match.
 
 ## How a gamemode is put together
 
-A gamemode is a name and a list of plugins. This is the whole gun game,
-`src/gamemodes/gun-game/gun-game.ts`:
+A gamemode is one file: its settings at the top, then its name and plugin list. The settings are
+plain values with a comment each, so changing how a match plays never means reading plugin code.
+Trimmed from `src/gamemodes/gun-game/gun-game.ts`:
 
 ```typescript
+// ── Settings: edit these to change how a match plays ──
+
+/** Who plays against whom. */
+const TEAMS: TeamRulesConfig = {
+  // Everyone joins this team on connect, so nobody picks one
+  autoAssign: Teams.CT,
+  // "all" is free-for-all, "enemies" is normal CS, "none" turns off player damage
+  damage: "all",
+};
+
+/** Server settings set when the gamemode starts. Any CS2 console variable can go here. */
+const SERVER: Record<string, ConvarValue> = {
+  // Seconds of warmup before the match starts
+  mp_warmuptime: 10,
+};
+
+const WEAPONS = ["weapon_glock", "weapon_usp_silencer", /* ... */ "weapon_knife"];
+const KILLS_PER_WEAPON = 3;
+
+// ── The gamemode: its name and its plugins, which run in this order ──
+
 export const pistolGunGame: GamemodeConfig = {
   name: "Pistol Gun Game",
-  plugins: [teamRules({ damage: "all" }), ladder(), headshotsOnly()],
+  plugins: [
+    teamRules(TEAMS),
+    convars(SERVER),
+    ladder({ weapons: WEAPONS, killsPerLevel: KILLS_PER_WEAPON }),
+    headshotsOnly(),
+  ],
 };
 ```
 
 `teamRules` makes everyone an enemy, `ladder` runs the weapon progression and the win, and
 `headshotsOnly` cancels bullet damage that isn't to the head. Drop `headshotsOnly()` and it's a normal
-gun game; `ladder({ weapons: [...] })` changes the weapons.
+gun game.
 
 `src/gamemode.ts` picks which gamemode runs:
 
@@ -77,7 +104,8 @@ Plugins run in list order, and a plugin that throws is logged and skipped while 
 ### Making your own
 
 1. Make a folder in `src/gamemodes/`, with a main file named after it (`my-mode/my-mode.ts`).
-2. In that file, export the gamemode: its name and its plugins.
+2. In that file, put the settings first, one commented value each, then export the gamemode: its
+   name and its plugins, built from those settings.
 3. Point `src/gamemode.ts` at it.
 
 Plugins only your gamemode uses go in its folder. When a second gamemode needs one, move it to

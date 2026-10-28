@@ -25,20 +25,6 @@ import { playerStore } from "../../core/players";
 import type { Plugin } from "../../core/plugin";
 import { after, type Timer } from "../../core/timers";
 
-export const PISTOL_LADDER = [
-  "weapon_glock",
-  "weapon_usp_silencer",
-  "weapon_p250",
-  "weapon_elite",
-  "weapon_fiveseven",
-  "weapon_tec9",
-  "weapon_cz75a",
-  "weapon_revolver",
-  "weapon_deagle",
-  "weapon_hegrenade",
-  "weapon_knife",
-];
-
 const RESPAWN = ["mp_respawn_on_death_t 1", "mp_respawn_on_death_ct 1"];
 const NO_RESPAWN = ["mp_respawn_on_death_t 0", "mp_respawn_on_death_ct 0"];
 
@@ -79,7 +65,7 @@ export interface MatchResult {
 
 export interface LadderConfig {
   /** Weapons in order; the last one wins. */
-  weapons?: string[];
+  weapons: string[];
   /** Kills with one weapon before the next; a knife kill always counts as a whole level. */
   killsPerLevel?: number;
   /** After the victory lap, before the reset: where match stats get saved. */
@@ -99,10 +85,10 @@ type Phase =
   | { kind: "ending" };
 
 export function ladder({
-  weapons = PISTOL_LADDER,
+  weapons,
   killsPerLevel = 3,
   onMatchEnd = () => {},
-}: LadderConfig = {}): Plugin {
+}: LadderConfig): Plugin {
   const rules = convars(RULES, "ladder");
   // Ladder index
   const levels = playerStore<number>();
