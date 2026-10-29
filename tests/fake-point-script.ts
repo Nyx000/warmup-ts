@@ -75,6 +75,10 @@ export class CSPlayerController {
   connected = true;
   IsConnected() { return this.connected; }
   GetPlayerPawn() { return this.pawn; }
+  money = 0;
+  /** Like the real server: money never goes below 0. */
+  AddMoneySpendableNow(amount: number) { this.money = Math.max(0, this.money + amount); }
+  GetMoneySpendableNow() { return this.money; }
   JoinTeam(team: number) { this.team = team; }
 }
 
