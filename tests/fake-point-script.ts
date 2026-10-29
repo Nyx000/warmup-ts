@@ -80,10 +80,16 @@ export const engine = {
   booleans: new Set<string>(),
   /** GameRules.TerminateRound calls: [reason, delay]. */
   roundEnds: [] as [number, number | undefined][],
+  /** GameRules.AddTeamScore calls: [team, score]. */
+  scores: [] as [number, number][],
   /** Instance.SpawnGrenadeProjectile configs, in order. */
   grenades: [] as { type: number; thrower?: CSPlayerPawn; throwStrength?: number }[],
   /** Instance.On* callbacks and "Console.<method>" names to leave out, as an older CS2 build would. */
   unsupported: new Set<string>(),
+  /** Map entities Instance.FindEntitiesByClass can find, by class. */
+  classes: new Map<string, object[]>(),
+  /** What Instance.GetMapName returns. */
+  mapName: "",
 
   reset(): void {
     callbacks.clear();
@@ -96,11 +102,14 @@ export const engine = {
     this.freezePeriod = false;
     this.warmupPeriod = false;
     this.roundEnds.length = 0;
+    this.scores.length = 0;
     this.grenades.length = 0;
     this.convars.clear();
     this.refused.clear();
     this.booleans.clear();
     this.unsupported.clear();
+    this.classes.clear();
+    this.mapName = "";
   },
 
   /** Runs the callback the script registered for an Instance.On* event; returns its result. */
@@ -143,6 +152,8 @@ const instanceMethods: Record<string, unknown> = {
   GetAllPlayerControllers: () => [...players],
   GetPlayerController: (slot: number) => players.find((player) => player.GetPlayerSlot() === slot),
   SpawnGrenadeProjectile: (config: (typeof engine.grenades)[number]) => void engine.grenades.push(config),
+  GetMapName: () => engine.mapName,
+  FindEntitiesByClass: (className: string) => engine.classes.get(className) ?? [],
 };
 
 // Every Instance.On* takes one registration, as in CS2: a second one throws
@@ -184,6 +195,7 @@ export const GameRules = {
   IsWarmupPeriod: () => engine.warmupPeriod,
   GetRoundsPlayed: () => 0,
   SetRoundRemainingTime: () => {},
+  AddTeamScore: (team: number, score: number) => void engine.scores.push([team, score]),
   TerminateRound: (reason: number, delay?: number) => void engine.roundEnds.push([reason, delay]),
 };
 
