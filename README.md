@@ -173,7 +173,7 @@ export const pistolGG: GamemodeConfig = {
     headshotsOnly(),
     ragdollPunch({ launches: RAGDOLL_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
     headshotBlood(),
-    moneyLog(),
+    money({ killHuman: 5, killBot: 1 }),
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
     randomSpawns({ maps: { de_inferno: deInferno } }),
     spawnSound({ sounds: SPAWN_SOUNDS }),
@@ -184,7 +184,7 @@ export const pistolGG: GamemodeConfig = {
 `teamRules` makes everyone an enemy, `ladder` runs the weapon progression and the win, and
 `headshotsOnly` cancels bullet damage that isn't to the head. Drop `headshotsOnly()` and it's a normal
 gun game. `convars` applies the `SERVER` settings. The rest is extras: `devSkip` lets a lone player type `!grenade` to skip to the grenade, `ragdollPunch` throws a body back on a killing headshot and up on a grenade kill, harder for each kill on the weapon, `headshotBlood` is the headshot
-effect, `onKillCount` and `onWin` play the fanfare, `moneyLog` logs each player's money, `welcome` greets each
+effect, `onKillCount` and `onWin` play the fanfare, `money` pays for kills and logs each payment to a human as a `[money] slot=N +5 kill` line, `welcome` greets each
 human player in chat, `mapRotation` moves to another Active Duty map after each match or when most players type `!rtv`, `randomSpawns` places players and `spawnSound` layers the spawn sounds.
 `ladder` also takes an optional `onMatchEnd({ winner, players })`, called after the victory lap and
 before the next match starts, for saving match stats; `winner` is the winner's slot and name, absent on a draw.

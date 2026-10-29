@@ -21,7 +21,7 @@ import { headshotBlood } from "../../plugins/headshot-blood";
 import { headshotsOnly } from "../../plugins/headshots-only";
 import { mapRotation } from "../../plugins/map-rotation";
 import { ragdollPunch } from "../../plugins/ragdoll-punch";
-import { moneyLog } from "../../plugins/money-log";
+import { money } from "../../plugins/money";
 import { spawnSound } from "../../plugins/spawn-sound";
 import { randomSpawns } from "../../plugins/random-spawns";
 import { repeatMessage } from "../../plugins/repeat-message";
@@ -56,6 +56,10 @@ const SERVER: Record<string, ConvarValue> = {
   bot_chatter: "off",
   // 1 mutes the "Fire in the hole" radio call on every grenade throw
   sv_ignoregrenaderadio: 1,
+  // The money plugin pays instead of the engine, and money starts at 0 each map
+  mp_playercashawards: 0,
+  mp_startmoney: 0,
+  mp_maxmoney: 200000,
 };
 
 /** Weapons in the order players climb them; a knife kill on the last one wins. */
@@ -107,10 +111,18 @@ const GRENADE_LAUNCHES = [
  */
 const MAPS = ["de_inferno", "de_train", "de_mirage", "de_nuke", "de_dust2", "de_overpass", "de_vertigo"];
 
+/**
+ * Dollars for a kill (a bot's is worth less) and for winning a match. Small, so the money a player
+ * builds up over many visits stays under mp_maxmoney.
+ */
+const KILL_PAY = { killHuman: 5, killBot: 1 };
+const WIN_PAY = 50;
+
 /** After a match ends, how long the scoreboard shows before the next map loads. */
 const SCOREBOARD_SECONDS = 12;
 
 const rotation = mapRotation({ maps: MAPS });
+const wallet = money(KILL_PAY);
 
 const gunLadder = ladder({
   weapons: WEAPONS,
@@ -119,7 +131,11 @@ const gunLadder = ladder({
   // 30 minutes on the round clock, then a draw and a new match
   timeLimit: 30 * 60,
   onKillCount: playKillSound,
-  onWin: celebrateWin,
+  onWin: (winner) => {
+    celebrateWin(winner);
+    const controller = winner.GetPlayerController();
+    if (controller) wallet.pay(controller, WIN_PAY, "win");
+  },
   onDemote: playDemotion,
   // As the scoreboard comes up, after a win or a draw. The [match] line is read by the server's stats
   // service, which knows each slot's Steam ID from the engine's connect lines
@@ -169,7 +185,7 @@ export const pistolGG: GamemodeConfig = {
     // After the plugins that can cancel damage, so only a hit that lands throws anyone
     ragdollPunch({ launches: RAGDOLL_LAUNCHES, blasts: GRENADE_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
     headshotBlood(),
-    moneyLog(),
+    wallet,
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
     repeatMessage({ seconds: 15 * 60, message: "PistolGG runs on WarmupTS, a TypeScript gamemode framework for CS2: github.com/Nyx000/warmup-ts" }),
     randomSpawns({
