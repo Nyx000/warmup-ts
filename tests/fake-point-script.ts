@@ -50,8 +50,8 @@ export class CSPlayerPawn {
   }
   GetHealth() { return this.health; }
   /** Every TakeDamage call, in order. */
-  damageTaken: { damage: number; attacker?: unknown; weapon?: unknown }[] = [];
-  TakeDamage(damage: { damage: number; attacker?: unknown; weapon?: unknown }) { this.damageTaken.push(damage); return damage.damage; }
+  damageTaken: { damage: number; damageTypes?: number; attacker?: unknown; weapon?: unknown }[] = [];
+  TakeDamage(damage: { damage: number; damageTypes?: number; attacker?: unknown; weapon?: unknown }) { this.damageTaken.push(damage); return damage.damage; }
   Glow() { this.glowing = true; }
   Unglow() { this.glowing = false; }
   GetPlayerController() { return this.controller; }

@@ -4,8 +4,9 @@
  * change the death impulse, and a dying player's speed didn't carry into the ragdoll (seen
  * 2026-10-28). So the killing headshot leaves them alive on 1 health and pushes them, again on
  * every think so ground friction can't eat the speed, and after `hold` seconds they take the
- * killing damage from the same shooter and weapon, which the kill feed then shows without the
- * headshot or grenade icon. Put it after any plugin that can cancel
+ * killing damage from the same shooter and weapon. Scripted damage has no hit group, so a
+ * headshot's finishing hit carries the HEADSHOT damage type to keep the kill a headshot; the
+ * grenade icon is still lost. Put it after any plugin that can cancel
  * damage, so a cancelled hit throws no one.
  */
 
@@ -38,6 +39,8 @@ export function ragdollPunch({
     name: "ragdollPunch",
     onModifyPlayerDamage({ player, damage, damageTypes, damageFlags, hitGroup, attacker, inflictor, weapon }) {
       const blast = (damageTypes & CSDamageTypes.BLAST) !== 0;
+      // FORCE_DEATH: our own finishing hit, which may arrive with the head hit group
+      if (damageFlags & CSDamageFlags.FORCE_DEATH) return undefined;
       if ((!blast && hitGroup !== CSHitGroup.HEAD) || attacker?.GetClassName() !== "player" || damage < player.GetHealth()) return undefined;
       const list = blast ? (blasts ?? launches) : launches;
       const { speed, lift } = list[Math.max(0, Math.min(list.length - 1, pick(attacker as CSPlayerPawn)))];
@@ -60,8 +63,9 @@ export function ragdollPunch({
         player.Teleport({ velocity });
         if (Instance.GetGameTime() < until) return;
         timer.cancel();
-        // Not a bullet, so headshot-only rules let it through; this plugin skips it as it is neither a headshot nor a blast
-        player.TakeDamage({ damage: player.GetHealth() + 100, damageTypes: CSDamageTypes.GENERIC, damageFlags: CSDamageFlags.FORCE_DEATH, attacker, inflictor, weapon });
+        // Not a bullet, so headshot-only rules let it through
+        const damageTypes = blast ? CSDamageTypes.GENERIC : CSDamageTypes.HEADSHOT;
+        player.TakeDamage({ damage: player.GetHealth() + 100, damageTypes, damageFlags: CSDamageFlags.FORCE_DEATH, attacker, inflictor, weapon });
       });
       return { damageFlags: damageFlags | CSDamageFlags.PREVENT_DEATH };
     },
