@@ -33,7 +33,7 @@ import { deNuke } from "../../spawns/de_nuke";
 import { deOverpass } from "../../spawns/de_overpass";
 import { deTrain } from "../../spawns/de_train";
 import { deVertigo } from "../../spawns/de_vertigo";
-import { celebrateWin, playKillSound } from "./fanfare";
+import { celebrateWin, playDemotion, playKillSound } from "./fanfare";
 import { ladder } from "./ladder";
 
 // ── Settings: edit these to change how a match plays ──
@@ -120,6 +120,7 @@ const gunLadder = ladder({
   timeLimit: 30 * 60,
   onKillCount: playKillSound,
   onWin: celebrateWin,
+  onDemote: playDemotion,
   // As the scoreboard comes up, after a win or a draw
   onMatchEnd: () => {
     say("Powered by WarmupTS");
