@@ -45,6 +45,33 @@ test.each([
   expect(bob.weapons).toEqual(["weapon_knife", "weapon_glock"]);
 });
 
+test("each kill reports the killer's weapon and count on it, the full count when it moves them up or wins", () => {
+  const counts: string[] = [];
+  const winners: unknown[] = [];
+  const onKillCount = ({ weapon, kills, knifed }: { weapon: string; kills: number; knifed: boolean }) =>
+    counts.push(`${weapon} ${kills}${knifed ? " knife" : ""}`);
+  const killsOn = { weapon_deagle: 4 };
+  createGamemode({ name: "Test", plugins: [ladder({ weapons: LADDER, killsOn, onKillCount, onWin: (w) => winners.push(w) })] });
+  engine.activate();
+  const alice = join("Alice");
+  const bob = join("Bob");
+
+  for (const killWeapon of [PISTOL, PISTOL, PISTOL, PISTOL, PISTOL, PISTOL]) kill(alice, bob, killWeapon);
+  expect(alice.weapons).toEqual(["weapon_knife", "weapon_deagle"]);
+  kill(alice, bob, PISTOL);
+  kill(alice, bob, PISTOL);
+  expect(winners).toEqual([]);
+  kill(alice, bob, KNIFE);
+
+  // The gun kill on the last weapon counts for nothing; the knife kill wins
+  expect(counts).toEqual([
+    "weapon_glock 1", "weapon_glock 2", "weapon_glock 3",
+    "weapon_deagle 1", "weapon_deagle 2", "weapon_deagle 3", "weapon_deagle 4",
+    "weapon_knife 3 knife",
+  ]);
+  expect(winners).toEqual([alice]);
+});
+
 // A grenade kill carries no weapon (measured 2026-10-27)
 test.each([
   ["a grenade kill", undefined, false],
@@ -116,6 +143,31 @@ test("after the victory lap the match ends on the scoreboard with its stats, and
   expect(engine.scores).toEqual([[2, 1]]);
   // With no restart delay the engine often skips the scoreboard (measured 2026-10-27)
   expect(delay).toBeGreaterThan(0);
+
+  engine.fire("OnRoundStart", {});
+  engine.fire("OnPlayerReset", { player: alice });
+  expect(alice.weapons).toEqual(["weapon_knife", "weapon_glock"]);
+});
+
+test("with a time limit the match ends in a draw when time runs out, with no winner and no victory lap", () => {
+  const results: MatchResult[] = [];
+  createGamemode({ name: "Test", plugins: [ladder({ weapons: LADDER, timeLimit: 60, onMatchEnd: (result) => results.push(result) })] });
+  engine.activate();
+  const alice = join("Alice");
+  const bob = join("Bob");
+  engine.fire("OnRoundStart", {});
+  for (const killWeapon of [PISTOL, PISTOL, PISTOL]) kill(alice, bob, killWeapon);
+  engine.tick(59);
+  expect(engine.roundEnds).toEqual([]);
+  engine.tick(1);
+
+  expect(results.map((result) => result.winner)).toEqual([undefined]);
+  expect(bob.moveType).toBe(CSMoveType.WALK);
+  expect(engine.roundEnds).toHaveLength(1);
+  // A 0:0 game over reads "Match Cancelled"
+  expect(engine.scores).toHaveLength(1);
+  engine.tick(60);
+  expect(engine.roundEnds).toHaveLength(1);
 
   engine.fire("OnRoundStart", {});
   engine.fire("OnPlayerReset", { player: alice });

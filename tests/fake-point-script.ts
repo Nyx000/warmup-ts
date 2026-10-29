@@ -26,22 +26,38 @@ export class CSPlayerPawn {
   team = 2;
   moveType: number = CSMoveType.WALK;
   position = { x: 0, y: 0, z: 0 };
+  angles = { pitch: 0, yaw: 0, roll: 0 };
   glowing = false;
+  health = 100;
+  /** The last velocity Teleport set. */
+  velocity: { x: number; y: number; z: number } | undefined;
+  name = "";
   /** CSInputs bits held down. */
   inputs = 0;
 
   constructor(private readonly controller: CSPlayerController) {}
 
   IsValid() { return true; }
+  GetClassName() { return "player"; }
   IsAlive() { return this.alive; }
   GetTeamNumber() { return this.team; }
   GetMoveType() { return this.moveType; }
   SetMoveType(moveType: number) { this.moveType = moveType; }
   GetAbsOrigin() { return { ...this.position }; }
-  Teleport({ position }: { position?: { x: number; y: number; z: number } }) { if (position) this.position = { ...position }; }
+  GetEyeAngles() { return { ...this.angles }; }
+  GetEyePosition() { return { ...this.position, z: this.position.z + 64 }; }
+  Teleport({ position, velocity }: { position?: { x: number; y: number; z: number }; velocity?: { x: number; y: number; z: number } }) {
+    if (position) this.position = { ...position };
+    if (velocity) this.velocity = { ...velocity };
+  }
+  GetHealth() { return this.health; }
+  /** Every TakeDamage call, in order. */
+  damageTaken: { damage: number; attacker?: unknown; weapon?: unknown }[] = [];
+  TakeDamage(damage: { damage: number; attacker?: unknown; weapon?: unknown }) { this.damageTaken.push(damage); return damage.damage; }
   Glow() { this.glowing = true; }
   Unglow() { this.glowing = false; }
   GetPlayerController() { return this.controller; }
+  SetEntityName(name: string) { this.name = name; }
   IsInputPressed(inputs: number) { return (this.inputs & inputs) !== 0; }
   DestroyWeapons() { this.weapons = []; }
   GiveNamedItem(name: string) { this.weapons.push(name); }
@@ -86,6 +102,10 @@ export const engine = {
   grenades: [] as { type: number; thrower?: CSPlayerPawn; throwStrength?: number }[],
   /** Instance.On* callbacks and "Console.<method>" names to leave out, as an older CS2 build would. */
   unsupported: new Set<string>(),
+  /** Map entities Instance.FindEntityByName and FindEntitiesByName can find, by name. */
+  entities: new Map<string, object>(),
+  /** Instance.EntFireAtTarget calls, in order. */
+  inputs: [] as { target: object; input: string; value?: unknown }[],
   /** Map entities Instance.FindEntitiesByClass can find, by class. */
   classes: new Map<string, object[]>(),
   /** What Instance.GetMapName returns. */
@@ -108,6 +128,8 @@ export const engine = {
     this.refused.clear();
     this.booleans.clear();
     this.unsupported.clear();
+    this.entities.clear();
+    this.inputs.length = 0;
     this.classes.clear();
     this.mapName = "";
   },
@@ -152,6 +174,9 @@ const instanceMethods: Record<string, unknown> = {
   GetAllPlayerControllers: () => [...players],
   GetPlayerController: (slot: number) => players.find((player) => player.GetPlayerSlot() === slot),
   SpawnGrenadeProjectile: (config: (typeof engine.grenades)[number]) => void engine.grenades.push(config),
+  FindEntityByName: (name: string) => engine.entities.get(name),
+  FindEntitiesByName: (name: string) => (engine.entities.has(name) ? [engine.entities.get(name)] : []),
+  EntFireAtTarget: (config: (typeof engine.inputs)[number]) => void engine.inputs.push(config),
   GetMapName: () => engine.mapName,
   FindEntitiesByClass: (className: string) => engine.classes.get(className) ?? [],
 };
@@ -209,6 +234,11 @@ export const CSDamageTypes = {
   GENERIC: 0, CRUSH: 1 << 0, BULLET: 1 << 1, SLASH: 1 << 2, BURN: 1 << 3, VEHICLE: 1 << 4, FALL: 1 << 5,
   BLAST: 1 << 6, CLUB: 1 << 7, SHOCK: 1 << 8, SONIC: 1 << 9, BUCKSHOT: 1 << 10, DROWN: 1 << 11,
   POISON: 1 << 12, HEADSHOT: 1 << 13,
+} as const;
+
+export const CSDamageFlags = {
+  NONE: 0, SUPPRESS_HEALTH_CHANGES: 1 << 0, SUPPRESS_PHYSICS_FORCE: 1 << 1, SUPPRESS_EFFECTS: 1 << 2, PREVENT_DEATH: 1 << 3,
+  FORCE_DEATH: 1 << 4, SUPPRESS_DAMAGE_MODIFICATION: 1 << 5, IGNORE_ARMOR: 1 << 6,
 } as const;
 
 export const CSWeaponType = {

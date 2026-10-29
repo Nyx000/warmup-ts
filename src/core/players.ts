@@ -5,7 +5,7 @@
  */
 
 import { Instance } from "cs_script/point_script";
-import type { CSPlayerController } from "cs_script/point_script";
+import type { CSPlayerController, CSPlayerPawn } from "cs_script/point_script";
 
 export class PlayerStore<T> extends Map<number, T> {
   /** false for values that can't be saved as plain data across a hot reload, like a Timer. */
@@ -24,4 +24,16 @@ export function playerStore<T>({ persist = true } = {}): PlayerStore<T> {
 /** Instance.GetAllPlayerControllers() also returns controllers of players who have left. */
 export function connectedPlayers(): CSPlayerController[] {
   return Instance.GetAllPlayerControllers().filter((controller) => controller.IsValid() && controller.IsConnected());
+}
+
+/**
+ * Names a player's pawn after its slot and returns the name, for inputs that find an entity by
+ * name (SetSourceEntity). The same name every time, so plugins don't rename each other's targets.
+ */
+export function pawnTargetName(pawn: CSPlayerPawn): string | undefined {
+  const slot = pawn.GetPlayerController()?.GetPlayerSlot();
+  if (slot === undefined) return undefined;
+  const name = `wts_player_${slot}`;
+  pawn.SetEntityName(name);
+  return name;
 }

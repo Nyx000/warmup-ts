@@ -3,7 +3,8 @@
  * them up at once. A knife kill on the last weapon wins: for a short victory lap everyone
  * else is frozen, nobody respawns, and only the winner's knife hurts; then the match ends
  * on the scoreboard and the next one starts everyone on the first weapon. Otherwise
- * players respawn, nobody can buy, and the round never ends. On the grenade level a player
+ * players respawn, nobody can buy, and the round runs until someone wins or, with a time
+ * limit, until the clock runs out and the match ends in a draw. On the grenade level a player
  * holds nothing and throws by clicking. Pair it with
  * teamRules({ damage: "all" }) for free-for-all.
  */
@@ -59,7 +60,8 @@ const WINNER_GLOW = { r: 255, g: 200, b: 0 };
 const STILL = { x: 0, y: 0, z: 0 };
 
 export interface MatchResult {
-  winner: string;
+  /** Absent when time ran out. */
+  winner?: string;
   players: { slot: number; name: string; kills: number }[];
 }
 
@@ -68,6 +70,17 @@ export interface LadderConfig {
   weapons: string[];
   /** Kills with one weapon before the next; a knife kill always counts as a whole level. */
   killsPerLevel?: number;
+  /** Kills needed on particular weapons, in place of killsPerLevel. */
+  killsOn?: Record<string, number>;
+  /** Seconds a match lasts before it ends in a draw; without one it lasts until someone wins. */
+  timeLimit?: number;
+  /**
+   * Each kill that counts toward the next weapon, with the killer's ladder weapon, their kills on it
+   * (all it needs when the kill moves them up or wins) and whether it was a knife kill.
+   */
+  onKillCount?: (kill: { killer: CSPlayerPawn; victim: CSPlayerPawn; weapon: string; kills: number; knifed: boolean }) => void;
+  /** The winning knife kill, as the victory lap starts. */
+  onWin?: (winner: CSPlayerPawn) => void;
   /** After the victory lap, before the reset: where match stats get saved. */
   onMatchEnd?: (result: MatchResult) => void;
 }
@@ -87,8 +100,12 @@ type Phase =
 export function ladder({
   weapons,
   killsPerLevel = 3,
+  killsOn = {},
+  timeLimit,
+  onKillCount = () => {},
+  onWin = () => {},
   onMatchEnd = () => {},
-}: LadderConfig): Plugin {
+}: LadderConfig): Plugin & { killsOnWeapon(pawn: CSPlayerPawn): number; setWeapon(pawn: CSPlayerPawn, weapon: string): boolean } {
   const rules = convars(RULES, "ladder");
   // Ladder index
   const levels = playerStore<number>();
@@ -96,6 +113,8 @@ export function ladder({
   const kills = playerStore<number>();
   const matchKills = playerStore<number>();
   let phase: Phase = { kind: "playing" };
+  // Game time the match runs out; game time rather than the HUD clock, which the engine lets run past 0
+  let deadline: number | undefined;
   // The timer that gives a bot its next grenade
   const grenadeRefills = playerStore<Timer>({ persist: false });
   // Game time a player can next throw
@@ -174,11 +193,19 @@ export function ladder({
     }
   }
 
-  function endMatch(winner: CSPlayerPawn, winnerName: string): void {
-    if (winner.IsValid()) winner.Unglow();
+  function timeUp(): void {
+    announce("*** TIME'S UP: THE MATCH IS A DRAW ***");
+    Console.ServerCommand(`mp_maxrounds ${GameRules.GetRoundsPlayed() + 1}`);
+    endMatch(undefined, "Draw");
+  }
+
+  // With no winner (time ran out) the shared team takes the point under bannerText
+  function endMatch(winner: CSPlayerPawn | undefined, bannerText: string): void {
+    if (winner?.IsValid()) winner.Unglow();
     phase = { kind: "ending" };
+    deadline = undefined;
     onMatchEnd({
-      winner: winnerName,
+      winner: winner && bannerText,
       players: Instance.GetAllPlayerControllers().map((controller) => ({
         slot: controller.GetPlayerSlot(),
         name: controller.GetPlayerName(),
@@ -189,18 +216,35 @@ export function ladder({
     levels.clear();
     kills.clear();
     matchKills.clear();
-    const team = winner.GetTeamNumber() === 2 ? 2 : 3;
+    const team = (winner ?? livePawns()[0])?.GetTeamNumber() === 2 ? 2 : 3;
     // A 0:0 game over shows "Match Cancelled" to everyone (seen 2026-10-28). Everyone plays on one
     // team, so it gets the point and the winner's name, and the banner names the winner instead.
     // mp_teamname_1 is CT, mp_teamname_2 is T (measured from the match-start log, 2026-10-28)
     GameRules.AddTeamScore(team, 1);
-    const bannerName = winnerName.replace(/["';\\]/g, "");
+    const bannerName = bannerText.replace(/["';\\]/g, "");
     Console.ServerCommand(`mp_teamname_${team === 3 ? 1 : 2} "${bannerName}"`);
     GameRules.TerminateRound(team === 2 ? CSRoundEndReason.TERRORISTS_WIN : CSRoundEndReason.CTS_WIN, MATCH_END_DELAY_SECONDS);
   }
 
   return {
     name: "ladder",
+
+    /** A player's kills so far on their current weapon. */
+    killsOnWeapon(pawn: CSPlayerPawn) {
+      const slot = pawn.GetPlayerController()?.GetPlayerSlot();
+      return slot === undefined ? 0 : (kills.get(slot) ?? 0);
+    },
+
+    /** Puts a player straight onto a ladder weapon with no kills on it; false if it isn't on the ladder. */
+    setWeapon(pawn: CSPlayerPawn, weapon: string) {
+      const slot = pawn.GetPlayerController()?.GetPlayerSlot();
+      const level = weapons.indexOf(weapon);
+      if (slot === undefined || level < 0) return false;
+      levels.set(slot, level);
+      kills.delete(slot);
+      equip(pawn);
+      return true;
+    },
 
     init() {
       rules.init();
@@ -209,7 +253,8 @@ export function ladder({
     players: { levels, kills, matchKills, grenadeRefills, nextThrow },
 
     onRoundStart() {
-      GameRules.SetRoundRemainingTime(ENDLESS_ROUND_SECONDS);
+      GameRules.SetRoundRemainingTime(timeLimit ?? ENDLESS_ROUND_SECONDS);
+      deadline = timeLimit === undefined ? undefined : Instance.GetGameTime() + timeLimit;
       if (phase.kind === "ending") {
         for (const command of ["mp_maxrounds 0", 'mp_teamname_1 ""', 'mp_teamname_2 ""', ...RESPAWN]) Console.ServerCommand(command);
       }
@@ -244,19 +289,28 @@ export function ladder({
       const slot = killer.GetPlayerSlot();
       matchKills.set(slot, (matchKills.get(slot) ?? 0) + 1);
       const level = levels.get(slot) ?? 0;
+      const ladderWeapon = weapons[level];
+      const needed = killsOn[ladderWeapon] ?? killsPerLevel;
       const knifed = weapon?.GetData().GetType() === CSWeaponType.KNIFE;
       if (level === weapons.length - 1) {
         // One grenade can kill several players: the kill that moves its thrower up to the
         // last weapon must not also win (seen in game 2026-10-27), so only a knife kill wins
-        if (knifed) startVictoryLap(attacker, killer.GetPlayerName());
+        if (knifed) {
+          onKillCount({ killer: attacker, victim: player, weapon: ladderWeapon, kills: needed, knifed: true });
+          startVictoryLap(attacker, killer.GetPlayerName());
+          onWin(attacker);
+        }
         return;
       }
 
       const killsHere = (kills.get(slot) ?? 0) + 1;
-      if (!knifed && killsHere < killsPerLevel) {
+      if (!knifed && killsHere < needed) {
         kills.set(slot, killsHere);
+        onKillCount({ killer: attacker, victim: player, weapon: ladderWeapon, kills: killsHere, knifed: false });
         return;
       }
+
+      onKillCount({ killer: attacker, victim: player, weapon: ladderWeapon, kills: needed, knifed });
 
       kills.delete(slot);
       levels.set(slot, level + 1);
@@ -282,7 +336,10 @@ export function ladder({
     onThink() {
       rules.onThink();
       if (phase.kind === "victoryLap") holdStill(phase);
-      if (phase.kind === "playing") throwGrenades(Instance.GetGameTime());
+      if (phase.kind !== "playing") return;
+      const now = Instance.GetGameTime();
+      if (deadline !== undefined && now >= deadline && !GameRules.IsWarmupPeriod()) timeUp();
+      else throwGrenades(now);
     },
   };
 }
