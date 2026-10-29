@@ -18,7 +18,7 @@ import {
   GameRules,
   Instance,
 } from "cs_script/point_script";
-import type { Vector } from "cs_script/point_script";
+import type { CSPlayerController, Vector } from "cs_script/point_script";
 import { say } from "../../core/chat";
 import { convars } from "../../core/convars";
 import { playerStore } from "../../core/players";
@@ -68,7 +68,7 @@ const STILL = { x: 0, y: 0, z: 0 };
 
 export interface MatchResult {
   /** Absent when time ran out. */
-  winner?: string;
+  winner?: { slot: number; name: string };
   players: { slot: number; name: string; kills: number }[];
 }
 
@@ -99,12 +99,15 @@ type Phase =
   | {
       kind: "victoryLap";
       winner: CSPlayerPawn;
+      winnerSlot: number;
       winnerName: string;
       /** Where each frozen player is held */
       frozenAt: Map<CSPlayerPawn, Vector>;
     }
   // Waiting for the match end the round end triggers
   | { kind: "ending" };
+
+type VictoryLap = Extract<Phase, { kind: "victoryLap" }>;
 
 export function ladder({
   weapons,
@@ -163,12 +166,13 @@ export function ladder({
       .filter((pawn): pawn is CSPlayerPawn => !!pawn?.IsValid() && pawn.IsAlive());
   }
 
-  function startVictoryLap(winner: CSPlayerPawn, winnerName: string): void {
-    const lap: Phase = { kind: "victoryLap", winner, winnerName, frozenAt: new Map() };
+  function startVictoryLap(winner: CSPlayerPawn, controller: CSPlayerController): void {
+    const winnerName = controller.GetPlayerName();
+    const lap: VictoryLap = { kind: "victoryLap", winner, winnerSlot: controller.GetPlayerSlot(), winnerName, frozenAt: new Map() };
     phase = lap;
     // A round restart ends the lap early; then this has nothing left to end
     after(VICTORY_LAP_SECONDS, () => {
-      if (phase === lap) endMatch(winner, winnerName);
+      if (phase === lap) endMatch(lap);
     });
     announce(`*** ${winnerName} WINS THE GUN GAME ***`);
     winner.Glow(WINNER_GLOW);
@@ -182,7 +186,7 @@ export function ladder({
   // put back where the lap found them: bots held at 0 units of drift over 5 s against 891
   // unheld, and doing it in QueueAfterThinks instead let one drift 69 (measured 2026-10-27).
   // Frozen players can still shoot, so they are disarmed; the next match's spawn re-arms them
-  function holdStill(lap: Extract<Phase, { kind: "victoryLap" }>): void {
+  function holdStill(lap: VictoryLap): void {
     for (const pawn of livePawns()) {
       if (pawn === lap.winner) continue;
       let position = lap.frozenAt.get(pawn);
@@ -198,16 +202,18 @@ export function ladder({
   function timeUp(): void {
     announce("*** TIME'S UP: THE MATCH IS A DRAW ***");
     Console.ServerCommand(`mp_maxrounds ${GameRules.GetRoundsPlayed() + 1}`);
-    endMatch(undefined, "Draw");
+    endMatch();
   }
 
   // With no winner (time ran out) the shared team takes the point under bannerText
-  function endMatch(winner: CSPlayerPawn | undefined, bannerText: string): void {
+  function endMatch(lap?: VictoryLap): void {
+    const winner = lap?.winner;
+    const bannerText = lap?.winnerName ?? "Draw";
     if (winner?.IsValid()) winner.Unglow();
     phase = { kind: "ending" };
     deadline = undefined;
     onMatchEnd({
-      winner: winner && bannerText,
+      winner: lap && { slot: lap.winnerSlot, name: lap.winnerName },
       players: Instance.GetAllPlayerControllers().map((controller) => ({
         slot: controller.GetPlayerSlot(),
         name: controller.GetPlayerName(),
@@ -304,7 +310,7 @@ export function ladder({
         // last weapon must not also win (seen in game 2026-10-27), so only a knife kill wins
         if (knifed) {
           onKillCount({ killer: attacker, victim: player, weapon: ladderWeapon, kills: needed, knifed: true });
-          startVictoryLap(attacker, killer.GetPlayerName());
+          startVictoryLap(attacker, killer);
           onWin(attacker);
         }
         return;

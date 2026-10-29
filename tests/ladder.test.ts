@@ -128,7 +128,7 @@ test("after the victory lap the match ends on the scoreboard with its stats, and
 
   expect(results).toEqual([
     {
-      winner: "Alice",
+      winner: { slot: 0, name: "Alice" },
       players: [
         { slot: 0, name: "Alice", kills: 3 },
         { slot: 1, name: "Bob", kills: 0 },
