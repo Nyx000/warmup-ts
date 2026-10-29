@@ -11,7 +11,22 @@
 
 import { Console, Instance } from "cs_script/point_script";
 import type { QAngle, Vector } from "cs_script/point_script";
+import type { Plugin } from "./plugin";
 import { after } from "./timers";
+
+/**
+ * Runs a server console command at each round start, for a server that provides its effect entities
+ * outside the map's own entities: the restart cleanup (at warmup end and every game restart) deletes
+ * those, and the command puts them back. Every round start follows a cleanup.
+ */
+export function effectsReload(command = "wts_effects_reload"): Plugin {
+  return {
+    name: "effectsReload",
+    onRoundStart() {
+      Console.ServerCommand(command);
+    },
+  };
+}
 
 // Between a name's Stop and its next Start, so they land in different ticks
 const REST_SECONDS = 0.1;
