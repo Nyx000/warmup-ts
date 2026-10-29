@@ -68,6 +68,15 @@ export interface LadderConfig {
   weapons: string[];
   /** Kills with one weapon before the next; a knife kill always counts as a whole level. */
   killsPerLevel?: number;
+  /** Kills needed on particular weapons, in place of killsPerLevel. */
+  killsOn?: Record<string, number>;
+  /**
+   * Each kill that counts toward the next weapon, with the killer's ladder weapon, their kills on it
+   * (all it needs when the kill moves them up or wins) and whether it was a knife kill.
+   */
+  onKillCount?: (kill: { killer: CSPlayerPawn; victim: CSPlayerPawn; weapon: string; kills: number; knifed: boolean }) => void;
+  /** The winning knife kill, as the victory lap starts. */
+  onWin?: (winner: CSPlayerPawn) => void;
   /** After the victory lap, before the reset: where match stats get saved. */
   onMatchEnd?: (result: MatchResult) => void;
 }
@@ -87,6 +96,9 @@ type Phase =
 export function ladder({
   weapons,
   killsPerLevel = 3,
+  killsOn = {},
+  onKillCount = () => {},
+  onWin = () => {},
   onMatchEnd = () => {},
 }: LadderConfig): Plugin {
   const rules = convars(RULES, "ladder");
@@ -244,19 +256,28 @@ export function ladder({
       const slot = killer.GetPlayerSlot();
       matchKills.set(slot, (matchKills.get(slot) ?? 0) + 1);
       const level = levels.get(slot) ?? 0;
+      const ladderWeapon = weapons[level];
+      const needed = killsOn[ladderWeapon] ?? killsPerLevel;
       const knifed = weapon?.GetData().GetType() === CSWeaponType.KNIFE;
       if (level === weapons.length - 1) {
         // One grenade can kill several players: the kill that moves its thrower up to the
         // last weapon must not also win (seen in game 2026-10-27), so only a knife kill wins
-        if (knifed) startVictoryLap(attacker, killer.GetPlayerName());
+        if (knifed) {
+          onKillCount({ killer: attacker, victim: player, weapon: ladderWeapon, kills: needed, knifed: true });
+          startVictoryLap(attacker, killer.GetPlayerName());
+          onWin(attacker);
+        }
         return;
       }
 
       const killsHere = (kills.get(slot) ?? 0) + 1;
-      if (!knifed && killsHere < killsPerLevel) {
+      if (!knifed && killsHere < needed) {
         kills.set(slot, killsHere);
+        onKillCount({ killer: attacker, victim: player, weapon: ladderWeapon, kills: killsHere, knifed: false });
         return;
       }
+
+      onKillCount({ killer: attacker, victim: player, weapon: ladderWeapon, kills: needed, knifed });
 
       kills.delete(slot);
       levels.set(slot, level + 1);

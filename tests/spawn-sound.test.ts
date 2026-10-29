@@ -39,6 +39,19 @@ test("with a sound list, every sound plays from the spawning player", () => {
   ]);
 });
 
+test("with bots off, a bot spawns silently and a human doesn't", () => {
+  engine.entities.set("wts_spawn_sound", {});
+  createGamemode({ name: "Test", plugins: [spawnSound({ bots: false })] });
+  engine.activate();
+  const bot = engine.addPlayer("Bot");
+  bot.bot = true;
+
+  engine.fire("OnPlayerReset", { player: bot.pawn });
+  expect(engine.inputs).toEqual([]);
+  engine.fire("OnPlayerReset", { player: engine.addPlayer("Alice").pawn });
+  expect(engine.inputs.at(-1)?.input).toBe("StartSound");
+});
+
 test("a map without the sound entity says so once and stays silent", () => {
   createGamemode({ name: "Test", plugins: [spawnSound()] });
   engine.activate();

@@ -45,6 +45,33 @@ test.each([
   expect(bob.weapons).toEqual(["weapon_knife", "weapon_glock"]);
 });
 
+test("each kill reports the killer's weapon and count on it, the full count when it moves them up or wins", () => {
+  const counts: string[] = [];
+  const winners: unknown[] = [];
+  const onKillCount = ({ weapon, kills, knifed }: { weapon: string; kills: number; knifed: boolean }) =>
+    counts.push(`${weapon} ${kills}${knifed ? " knife" : ""}`);
+  const killsOn = { weapon_deagle: 4 };
+  createGamemode({ name: "Test", plugins: [ladder({ weapons: LADDER, killsOn, onKillCount, onWin: (w) => winners.push(w) })] });
+  engine.activate();
+  const alice = join("Alice");
+  const bob = join("Bob");
+
+  for (const killWeapon of [PISTOL, PISTOL, PISTOL, PISTOL, PISTOL, PISTOL]) kill(alice, bob, killWeapon);
+  expect(alice.weapons).toEqual(["weapon_knife", "weapon_deagle"]);
+  kill(alice, bob, PISTOL);
+  kill(alice, bob, PISTOL);
+  expect(winners).toEqual([]);
+  kill(alice, bob, KNIFE);
+
+  // The gun kill on the last weapon counts for nothing; the knife kill wins
+  expect(counts).toEqual([
+    "weapon_glock 1", "weapon_glock 2", "weapon_glock 3",
+    "weapon_deagle 1", "weapon_deagle 2", "weapon_deagle 3", "weapon_deagle 4",
+    "weapon_knife 3 knife",
+  ]);
+  expect(winners).toEqual([alice]);
+});
+
 // A grenade kill carries no weapon (measured 2026-10-27)
 test.each([
   ["a grenade kill", undefined, false],

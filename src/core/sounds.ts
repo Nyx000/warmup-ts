@@ -1,5 +1,5 @@
 /**
- * Plays a map's point_soundevent from a player, for plugins that make a player-made sound.
+ * Plays a map's point_soundevent from a player or at a point, for plugins that make a player-made sound.
  *
  * The map provides the point_soundevent: "Re-trigger Stops Last" off so overlapping plays don't
  * cut each other short, and "Entity Index Selection" set to "Use Entity Index" so it plays from
@@ -7,12 +7,12 @@
  * everyone near the player hears it.
  */
 
-import { Console, Instance } from "cs_script/point_script";
-import type { CSPlayerPawn } from "cs_script/point_script";
+import { Console, CSPlayerPawn, Instance } from "cs_script/point_script";
+import type { Vector } from "cs_script/point_script";
 import { pawnTargetName } from "./players";
 
-/** Returns a function that plays the sound from a pawn, optionally as a different sound event. */
-export function mapSound(pluginName: string, entityName: string): (from: CSPlayerPawn, soundEvent?: string) => void {
+/** Returns a function that plays the sound from a pawn or at a point, optionally as a different sound event. */
+export function mapSound(pluginName: string, entityName: string): (from: CSPlayerPawn | Vector, soundEvent?: string) => void {
   let warned = false;
 
   return (from, soundEvent) => {
@@ -22,7 +22,11 @@ export function mapSound(pluginName: string, entityName: string): (from: CSPlaye
       warned = true;
       return;
     }
-    const source = pawnTargetName(from);
+    let source: string | undefined = entityName;
+    if (from instanceof CSPlayerPawn) source = pawnTargetName(from);
+    // Not measured: assumed a point_soundevent that is its own source plays where it stands. The move
+    // is immediate and the inputs queued, so two points in one tick both play at the second
+    else sound.Teleport({ position: from });
     if (!source) return;
     // Assumed, not measured: queued inputs to one entity run in the order fired, so two players in
     // the same tick each get their own source

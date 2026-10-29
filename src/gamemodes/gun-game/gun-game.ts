@@ -1,9 +1,11 @@
 /**
- * PistolGG, a pistol gun game, headshots only: free-for-all, three kills per weapon up a ladder
- * of nine pistols, an HE grenade and the knife. A knife kill on the last weapon wins. Players
+ * PistolGG, a pistol gun game, headshots only: free-for-all, three kills per pistol (four on
+ * the HE grenade) up a ladder of nine pistols, an HE grenade and the knife. A knife kill on the last weapon wins. Players
  * spawn at random points away from other players after a 10 second warmup, with no freeze time.
  * Everyone joins CT straight away, with no team pick. A sound plays from each player as they
- * spawn, and headshots spray blood and ring a random bell for the shooter.
+ * spawn with armor and a helmet, headshots spray blood, and each kill rings a bell from the
+ * victim's head, a step higher for each kill on the same weapon. A knife kill plays Arms Race's
+ * knife sting instead, and the winner gets a chicken chorus and feathers (fanfare.ts).
  */
 
 import type { GamemodeConfig } from "../../core/gamemode";
@@ -12,13 +14,13 @@ import type { ConvarValue } from "../../core/convars";
 import { teamRules, Teams } from "../../core/rules";
 import type { TeamRulesConfig } from "../../core/rules";
 import { headshotBlood } from "../../plugins/combat/headshot-blood";
-import { headshotSound } from "../../plugins/combat/headshot-sound";
 import { headshotsOnly } from "../../plugins/combat/headshots-only";
 import { moneyLog } from "../../plugins/economy/money-log";
 import { spawnSound } from "../../plugins/hud/spawn-sound";
 import { randomSpawns } from "../../plugins/players/random-spawns";
 import { welcome } from "../../plugins/hud/welcome";
 import { deInferno } from "../../spawns/de_inferno";
+import { celebrateWin, playKillSound } from "./fanfare";
 import { ladder } from "./ladder";
 
 // ── Settings: edit these to change how a match plays ──
@@ -37,6 +39,12 @@ const SERVER: Record<string, ConvarValue> = {
   mp_warmuptime: 10,
   // Seconds everyone stands frozen at the start of a round
   mp_freezetime: 0,
+  // Bots stay quiet: no radio calls or chatter
+  bot_chatter: "off",
+  // 1 mutes the "Fire in the hole" radio call on every grenade throw
+  sv_ignoregrenaderadio: 1,
+  // 2 gives everyone kevlar and a helmet; a helmet means some pistols need two headshots
+  mp_free_armor: 2,
 };
 
 /** Weapons in the order players climb them; a knife kill on the last one wins. */
@@ -55,26 +63,18 @@ const WEAPONS = [
 ];
 
 /**
- * Sounds played together from each player as they spawn: a chicken chorus. Stacking different
- * events is the only way to make it louder, since a sound event's volume is set in the players'
- * own game files and each event blocks its own repeats for a few seconds.
+ * Sounds played together from each player as they spawn. Player.Respawn is deathmatch's own cue:
+ * loud, heard across much of the map, and blocked from repeating for only 0.2 seconds. The chicken
+ * chorus on top is flavour: each chicken event blocks its repeats for 5 seconds server-wide, so on a
+ * busy server most spawns get only the respawn cue.
  */
-const SPAWN_SOUNDS = ["Chicken.Panic", "Chicken.FlapWings", "Chicken.Fly", "Chicken.Chick.Interact"];
-
-/** Sounds played from the shooter on a headshot, one picked at random each time: every short bell in the game. */
-const HEADSHOT_SOUNDS = [
-  "tr.BellImpact",
-  "tr.BellNormal",
-  "tr.TimerBell",
-  "inferno.bell_c",
-  "inferno.bell_d",
-  "inferno.bell_e",
-  "inferno.bell_f",
-  "inferno.bell_g",
-];
+const SPAWN_SOUNDS = ["Player.Respawn", "Chicken.Panic", "Chicken.FlapWings", "Chicken.Fly", "Chicken.Chick.Interact"];
 
 /** Kills with one weapon before moving to the next. A knife kill always moves a player up at once. */
 const KILLS_PER_WEAPON = 3;
+
+/** Weapons that need a different number of kills. */
+const KILLS_ON = { weapon_hegrenade: 4 };
 
 // ── The gamemode: its name and its plugins, which run in this order ──
 
@@ -83,10 +83,15 @@ export const pistolGG: GamemodeConfig = {
   plugins: [
     teamRules(TEAMS),
     convars(SERVER),
-    ladder({ weapons: WEAPONS, killsPerLevel: KILLS_PER_WEAPON }),
+    ladder({
+      weapons: WEAPONS,
+      killsPerLevel: KILLS_PER_WEAPON,
+      killsOn: KILLS_ON,
+      onKillCount: playKillSound,
+      onWin: celebrateWin,
+    }),
     headshotsOnly(),
     headshotBlood(),
-    headshotSound({ sounds: HEADSHOT_SOUNDS }),
     moneyLog(),
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
     randomSpawns({ maps: { de_inferno: deInferno } }),
