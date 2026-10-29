@@ -3,7 +3,7 @@
  */
 
 import { Console } from "cs_script/point_script";
-import { ENGINE_EVENTS, EngineEvent, Plugin } from "../../core/plugin";
+import { ENGINE_EVENTS, EngineEvent, Plugin } from "../core/plugin";
 
 export interface DebugConfig {
   /** Events to leave out, e.g. ["OnGunFire", "OnBulletImpact"] for less noise. */

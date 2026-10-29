@@ -4,7 +4,7 @@
  */
 
 import { CSDamageTypes, CSHitGroup } from "cs_script/point_script";
-import type { Plugin } from "../../core/plugin";
+import type { Plugin } from "../core/plugin";
 
 export function headshotsOnly(): Plugin {
   return {

@@ -9,8 +9,8 @@
 
 import { CSHitGroup } from "cs_script/point_script";
 import type { QAngle, Vector } from "cs_script/point_script";
-import { effectPool } from "../../core/effects";
-import type { Plugin } from "../../core/plugin";
+import { effectPool } from "../core/effects";
+import type { Plugin } from "../core/plugin";
 
 /**
  * `spots` bursts per headshot, `step` units apart along the shot starting one step in front of the

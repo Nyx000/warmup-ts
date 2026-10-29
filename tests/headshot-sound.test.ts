@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { CSHitGroup } from "cs_script/point_script";
 import { createGamemode } from "../src/core/gamemode";
-import { headshotSound } from "../src/plugins/combat/headshot-sound";
+import { headshotSound } from "../src/plugins/headshot-sound";
 import { mapSound } from "../src/core/sounds";
 import { engine } from "./fake-point-script";
 

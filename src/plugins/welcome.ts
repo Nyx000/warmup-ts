@@ -3,8 +3,8 @@
  * sees who arrived.
  */
 
-import { say } from "../../core/chat";
-import type { Plugin } from "../../core/plugin";
+import { say } from "../core/chat";
+import type { Plugin } from "../core/plugin";
 
 export function welcome(message: (name: string) => string): Plugin {
   return {

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createGamemode } from "../src/core/gamemode";
-import { repeatMessage } from "../src/plugins/hud/repeat-message";
+import { repeatMessage } from "../src/plugins/repeat-message";
 import { engine } from "./fake-point-script";
 
 test("the message is said in chat once every interval", () => {

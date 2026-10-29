@@ -4,7 +4,7 @@
  */
 
 import { Console } from "cs_script/point_script";
-import type { Plugin } from "../../core/plugin";
+import type { Plugin } from "../core/plugin";
 
 interface ExampleState {
   connected: number;

@@ -221,7 +221,7 @@ sits in the plugin list where you can see it, and neither plugin imports the oth
 4. Run `bun run check`, then `bun run dev` to try it in the game.
 
 Plugins only your gamemode uses go in its folder. When a second gamemode needs one, move it to
-`src/plugins/`, under the category that fits (each category folder has a short README).
+`src/plugins/`.
 
 ```
 src/
@@ -229,7 +229,7 @@ src/
 ├── core/                the framework: plugin contract, gamemode runtime, player stores, timers, convars, rules, chat commands and `say`
 ├── gamemodes/
 │   └── gun-game/        gun-game.ts (the gamemode), ladder.ts (its main plugin)
-├── plugins/             shared plugins: combat, loadout, players, economy, world, hud, dev
+├── plugins/             shared plugins, one file each
 ├── spawns/              per-map spawn lists for randomSpawns
 └── types/cs_script.d.ts Valve's API types, synced from your CS2 install
 tests/                   every test, plus the fake cs_script runtime they run against
@@ -240,7 +240,7 @@ dist/                    build output (gamemode.vjs), not committed
 ## Writing a plugin
 
 A plugin is an object with a `name` and whichever hooks it needs. All hooks are optional. The smallest
-useful one announces each kill in chat; put it in `src/plugins/hud/kill-feed.ts`:
+useful one announces each kill in chat; put it in `src/plugins/kill-feed.ts`:
 
 ```typescript
 import { say } from "../../core/chat";
@@ -267,8 +267,8 @@ the first word of a chat line case-insensitively, and the rest of the line arriv
 commands({ "!rules": ({ player }) => say(`${player.GetPlayerName()}: headshots only`) }),
 ```
 
-The engine can't hide a chat line, so everyone still sees `!rules`. `src/plugins/dev/example.ts` is a longer template with
-saved state, and `debug()` from `src/plugins/dev/debug.ts` logs every event as it fires.
+The engine can't hide a chat line, so everyone still sees `!rules`. `src/plugins/example.ts` is a longer template with
+saved state, and `debug()` from `src/plugins/debug.ts` logs every event as it fires.
 
 ### If you know GMod, SourceMod or FiveM
 
@@ -402,7 +402,7 @@ test. A test builds a gamemode from the plugin under test, then drives the fake:
 import { expect, test } from "bun:test";
 import { CSDamageTypes, CSHitGroup } from "cs_script/point_script";
 import { createGamemode } from "../src/core/gamemode";
-import { headshotsOnly } from "../src/plugins/combat/headshots-only";
+import { headshotsOnly } from "../src/plugins/headshots-only";
 import { engine } from "./fake-point-script";
 
 test("a bullet to the chest does no damage", () => {

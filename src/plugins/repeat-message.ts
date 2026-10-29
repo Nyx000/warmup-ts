@@ -2,9 +2,9 @@
  * Says the same line in chat every `seconds`, such as what the server runs on.
  */
 
-import { say } from "../../core/chat";
-import type { Plugin } from "../../core/plugin";
-import { every } from "../../core/timers";
+import { say } from "../core/chat";
+import type { Plugin } from "../core/plugin";
+import { every } from "../core/timers";
 
 export function repeatMessage({ seconds, message }: { seconds: number; message: string }): Plugin {
   return {
