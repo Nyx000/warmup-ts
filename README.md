@@ -150,7 +150,7 @@ const KILLS_PER_WEAPON = 3;
 const KILLS_ON = { weapon_hegrenade: 4 };
 
 /** How hard a killing headshot throws the body, one per kill on the same weapon. */
-const RAGDOLL_LAUNCHES = [{ speed: 600, lift: 25 }, { speed: 900, lift: 30 }, { speed: 1200, lift: 40 }];
+const RAGDOLL_LAUNCHES = [600, 900, 1300].map((speed) => ({ speed, lift: 0 }));
 
 const gunLadder = ladder({
   weapons: WEAPONS,
@@ -205,8 +205,11 @@ createGamemode(pistolGG);
 
 A plugin that throws is logged and skipped for that call while the rest carry on. Order matters where
 plugins build on each other: `onModifyPlayerDamage` runs as a chain, and `teamRules` goes before any
-plugin that reads a player's team in `onPlayerConnect`. A plugin that depends on another by name lists it
-in `requires`, and `createGamemode` throws at startup if it is missing or listed after.
+plugin that reads a player's team in `onPlayerConnect`.
+
+When one plugin needs something from another, the gamemode file passes it in as a setting, the way
+`ragdollPunch` gets `pick: (killer) => gunLadder.killsOnWeapon(killer)` above. The link is typed and
+sits in the plugin list where you can see it, and neither plugin imports the other.
 
 ### Making your own
 
@@ -264,9 +267,7 @@ the first word of a chat line case-insensitively, and the rest of the line arriv
 commands({ "!rules": ({ player }) => say(`${player.GetPlayerName()}: headshots only`) }),
 ```
 
-The engine can't hide a chat line, so everyone still sees `!rules`. A plugin that reads what another
-sets up lists it in `requires`, as in `requires: ["teamRules"]`, and the gamemode refuses to start
-unless that plugin is earlier in the list. `src/plugins/dev/example.ts` is a longer template with
+The engine can't hide a chat line, so everyone still sees `!rules`. `src/plugins/dev/example.ts` is a longer template with
 saved state, and `debug()` from `src/plugins/dev/debug.ts` logs every event as it fires.
 
 ### If you know GMod, SourceMod or FiveM
@@ -354,8 +355,8 @@ back. The console shows which way they were set (`Console.SetConvar`, or `Consol
 build without it) and names every setting the server did not take. Use `serverCommands` for anything
 that is a command rather than a convar.
 
-A gamemode can list `convars()` more than once. Each plugin is named after its label, first setting and
-count, so `requires` cannot name it as plain `convars`. A plugin with settings of its own
+A gamemode can list `convars()` more than once: each is named after its label, first setting and
+count, so two lists don't clash. A plugin with settings of its own
 calls `convars(values, "myPlugin")` inside itself and forwards `init()` and `onThink()` to it, as
 `ladder` does; the second argument is the log prefix.
 

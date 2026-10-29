@@ -85,9 +85,6 @@ export interface Plugin<TState = unknown> extends EngineHooks {
   /** Unique within a gamemode; keys saved state and prefixes error logs. */
   name: string;
 
-  /** Names of plugins that must be in the list, earlier than this one; createGamemode throws otherwise. */
-  requires?: string[];
-
   /** Map load, and again after every hot reload. */
   init?(): undefined;
 

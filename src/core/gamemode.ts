@@ -16,7 +16,7 @@ export interface GamemodeConfig {
   thinkInterval?: number;
 }
 
-type Hook = Exclude<keyof Plugin, "name" | "requires" | "players">;
+type Hook = Exclude<keyof Plugin, "name" | "players">;
 
 /** What a hot reload carries: plugin saveState results, and persistent player stores as [slot, value] pairs. */
 interface Saved {
@@ -36,13 +36,6 @@ export function createGamemode({ name, plugins, thinkInterval = 0.05 }: Gamemode
   const names = plugins.map((plugin) => plugin.name);
   const duplicate = names.find((pluginName, index) => names.indexOf(pluginName) !== index);
   if (duplicate) throw new Error(`[${name}] Two plugins are named "${duplicate}"`);
-  plugins.forEach((plugin, index) => {
-    for (const required of plugin.requires ?? []) {
-      const at = names.indexOf(required);
-      if (at < 0) throw new Error(`[${name}] Plugin "${plugin.name}" requires "${required}", which isn't in the plugin list`);
-      if (at >= index) throw new Error(`[${name}] Plugin "${plugin.name}" requires "${required}" to be listed before it`);
-    }
-  });
 
   // A throwing plugin must not stop the plugins after it or the engine callback;
   // the console is the only place a script error surfaces.
