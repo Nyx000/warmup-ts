@@ -58,6 +58,7 @@ export class CSPlayerPawn {
   SetEntityName(name: string) { this.name = name; }
   DestroyWeapons() { this.weapons = []; }
   GiveNamedItem(name: string) { this.weapons.push(name); }
+  FindWeapon(name: string) { return this.weapons.includes(name) ? {} : undefined; }
 }
 
 export class CSPlayerController {

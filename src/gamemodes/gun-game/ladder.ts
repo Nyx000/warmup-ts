@@ -5,7 +5,7 @@
  * on the scoreboard and the next one starts everyone on the first weapon. Otherwise
  * players respawn, nobody can buy, and the round runs until someone wins or, with a time
  * limit, until the clock runs out and the match ends in a draw. On the grenade level a player
- * holds a grenade and nothing else, and gets a new one after each throw. Killing yourself, or dying
+ * holds grenades and nothing else, and never runs out. Killing yourself, or dying
  * to the world, drops you a weapon. Pair it with teamRules({ damage: "all" }) for free-for-all.
  */
 
@@ -48,10 +48,12 @@ const RULES = {
   mp_death_drop_gun: 0,
   mp_death_drop_grenade: 0,
   sv_infinite_ammo: 2,
+  // Room for the grenade level's two
+  ammo_grenade_limit_default: 2,
 };
 
 const GRENADE = "weapon_hegrenade";
-// Between a throw and the thrower's next grenade
+// Between a throw and a new grenade, for a thrower whose grenade is gone
 const GRENADE_COOLDOWN_SECONDS = 1;
 // The longest round time that holds (measured 2026-10-27)
 const ENDLESS_ROUND_SECONDS = 86400;
@@ -134,6 +136,9 @@ export function ladder({
     // The grenade level carries the grenade alone, so it is what the player holds and nothing else can be drawn
     if (weapon !== "weapon_knife" && weapon !== GRENADE) pawn.GiveNamedItem("weapon_knife");
     pawn.GiveNamedItem(weapon, true);
+    // With a second grenade and infinite reserve ammo, a throw leaves the grenade in hand, so nothing
+    // else is drawn between throws: bots' reserve stayed at 2 through each throw (measured 2026-10-29)
+    if (weapon === GRENADE) pawn.GiveNamedItem(GRENADE);
   }
 
   function demote(pawn: CSPlayerPawn): void {
@@ -330,7 +335,7 @@ export function ladder({
           // Gone if the player disconnected meanwhile
           if (!grenadeRefills.delete(slot)) return;
           const pawn = Instance.GetPlayerController(slot)?.GetPlayerPawn();
-          if (pawn?.IsValid() && weapons[levels.get(slot) ?? 0] === GRENADE) equip(pawn);
+          if (pawn?.IsValid() && weapons[levels.get(slot) ?? 0] === GRENADE && !pawn.FindWeapon(GRENADE)) equip(pawn);
         }),
       );
     },

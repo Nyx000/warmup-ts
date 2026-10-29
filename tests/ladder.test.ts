@@ -17,7 +17,7 @@ test("the ladder's server rules are set and checked, an empty default pistol inc
   engine.tick();
   expect(engine.convars.get("mp_t_default_secondary")).toBe("");
   expect(engine.convars.get("sv_infinite_ammo")).toBe(2);
-  expect(engine.logs).toContain("[ladder] All 16 convars read back as set (Console.SetConvar)");
+  expect(engine.logs).toContain("[ladder] All 17 convars read back as set (Console.SetConvar)");
 });
 
 function join(name: string): CSPlayerPawn {
@@ -200,15 +200,26 @@ test("a connect without a player is ignored", () => {
   expect(engine.logs.some((line) => line.includes("threw"))).toBe(false);
 });
 
-test("on the grenade level a player holds only the grenade, and gets a new one a second after throwing", () => {
+const TWO_GRENADES = ["weapon_hegrenade", "weapon_hegrenade"];
+
+test("on the grenade level a player holds two grenades and nothing else, and is left alone after a throw", () => {
   start(["weapon_hegrenade", "weapon_knife"]);
   const alice = join("Alice");
+  expect(alice.weapons).toEqual(TWO_GRENADES);
+  alice.weapons = ["weapon_hegrenade"];
+  engine.fire("OnGrenadeThrow", { weapon: { GetOwner: () => alice } });
+  engine.tick(2);
   expect(alice.weapons).toEqual(["weapon_hegrenade"]);
+});
+
+test("a thrower left with no grenade gets two a second later", () => {
+  start(["weapon_hegrenade", "weapon_knife"]);
+  const alice = join("Alice");
   engine.fire("OnGrenadeThrow", { weapon: { GetOwner: () => alice } });
   alice.weapons = [];
 
   engine.tick(0.5);
   expect(alice.weapons).toEqual([]);
   engine.tick(0.5);
-  expect(alice.weapons).toEqual(["weapon_hegrenade"]);
+  expect(alice.weapons).toEqual(TWO_GRENADES);
 });
