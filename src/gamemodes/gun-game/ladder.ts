@@ -35,6 +35,9 @@ const RULES = {
   mp_respawn_on_death_ct: 1,
   mp_ignore_round_win_conditions: 1,
   mp_maxrounds: 0,
+  // The last match's winner names the team until the round restart clears it, and a map change skips that restart
+  mp_teamname_1: "",
+  mp_teamname_2: "",
   mp_give_player_c4: 0,
   mp_buytime: 0,
   // 3 means nobody can buy

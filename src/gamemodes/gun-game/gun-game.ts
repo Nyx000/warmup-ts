@@ -19,13 +19,20 @@ import { teamRules, Teams } from "../../core/rules";
 import type { TeamRulesConfig } from "../../core/rules";
 import { headshotBlood } from "../../plugins/headshot-blood";
 import { headshotsOnly } from "../../plugins/headshots-only";
+import { mapRotation } from "../../plugins/map-rotation";
 import { ragdollPunch } from "../../plugins/ragdoll-punch";
 import { moneyLog } from "../../plugins/money-log";
 import { spawnSound } from "../../plugins/spawn-sound";
 import { randomSpawns } from "../../plugins/random-spawns";
 import { repeatMessage } from "../../plugins/repeat-message";
 import { welcome } from "../../plugins/welcome";
+import { deDust2 } from "../../spawns/de_dust2";
 import { deInferno } from "../../spawns/de_inferno";
+import { deMirage } from "../../spawns/de_mirage";
+import { deNuke } from "../../spawns/de_nuke";
+import { deOverpass } from "../../spawns/de_overpass";
+import { deTrain } from "../../spawns/de_train";
+import { deVertigo } from "../../spawns/de_vertigo";
 import { celebrateWin, playKillSound } from "./fanfare";
 import { ladder } from "./ladder";
 
@@ -94,6 +101,17 @@ const GRENADE_LAUNCHES = [
   { speed: 1200, lift: 40 },
 ];
 
+/**
+ * The maps played, in no order: the game's Active Duty group (mg_active in gamemodes.txt, read
+ * 2026-10-29). None has deathmatch spawns, so each has a spawn list in src/spawns.
+ */
+const MAPS = ["de_inferno", "de_train", "de_mirage", "de_nuke", "de_dust2", "de_overpass", "de_vertigo"];
+
+/** After a match ends, how long the scoreboard shows before the next map loads. */
+const SCOREBOARD_SECONDS = 12;
+
+const rotation = mapRotation({ maps: MAPS });
+
 const gunLadder = ladder({
   weapons: WEAPONS,
   killsPerLevel: KILLS_PER_WEAPON,
@@ -103,7 +121,10 @@ const gunLadder = ladder({
   onKillCount: playKillSound,
   onWin: celebrateWin,
   // As the scoreboard comes up, after a win or a draw
-  onMatchEnd: () => say("Powered by WarmupTS"),
+  onMatchEnd: () => {
+    say("Powered by WarmupTS");
+    rotation.next(SCOREBOARD_SECONDS);
+  },
 });
 
 /**
@@ -140,6 +161,7 @@ export const pistolGG: GamemodeConfig = {
     convars(SERVER),
     gunLadder,
     devSkip,
+    rotation,
     headshotsOnly(),
     // After the plugins that can cancel damage, so only a hit that lands throws anyone
     ragdollPunch({ launches: RAGDOLL_LAUNCHES, blasts: GRENADE_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
@@ -147,7 +169,9 @@ export const pistolGG: GamemodeConfig = {
     moneyLog(),
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
     repeatMessage({ seconds: 15 * 60, message: "PistolGG runs on WarmupTS, a TypeScript gamemode framework for CS2: github.com/Nyx000/warmup-ts" }),
-    randomSpawns({ maps: { de_inferno: deInferno } }),
+    randomSpawns({
+      maps: { de_inferno: deInferno, de_train: deTrain, de_mirage: deMirage, de_nuke: deNuke, de_dust2: deDust2, de_overpass: deOverpass, de_vertigo: deVertigo },
+    }),
     spawnSound({ sounds: SPAWN_SOUNDS }),
   ],
 };
