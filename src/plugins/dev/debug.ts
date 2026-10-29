@@ -13,7 +13,9 @@ export interface DebugConfig {
 export function debug({ skip = [] }: DebugConfig = {}): Plugin {
   const plugin: Plugin = {
     name: "debug",
-    onFreezeTimeEnd: () => Console.Log("[Debug] FreezeTimeEnd"),
+    onFreezeTimeEnd() {
+      Console.Log("[Debug] FreezeTimeEnd");
+    },
   };
 
   // OnModifyPlayerDamage is left out: a hook there takes part in deciding the damage

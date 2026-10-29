@@ -9,13 +9,14 @@ import type { Plugin } from "./plugin";
 export type ConvarValue = number | boolean | string;
 
 export interface ConvarsPlugin extends Plugin {
-  init(): void;
-  onThink(): void;
+  init(): undefined;
+  onThink(): undefined;
 }
 
 // The readback happens on the first think after init(), not inside it: ServerCommand may
 // only queue the command, and a read right after would report the old value as a refusal.
-// `label` is the log prefix, for plugins that run convars() on behalf of their own rules.
+// `label` is the log prefix. The plugin's name adds the first setting and the count, so a
+// gamemode can list convars() more than once without tripping the duplicate-name check.
 export function convars(values: Record<string, ConvarValue>, label = "convars"): ConvarsPlugin {
   const log = (message: string) => Console.Log(`[${label}] ${message}`);
   const entries = Object.entries(values);
@@ -23,7 +24,7 @@ export function convars(values: Record<string, ConvarValue>, label = "convars"):
   let path = "";
 
   return {
-    name: "convars",
+    name: `${label}:${entries[0]?.[0] ?? ""}+${entries.length}`,
 
     init() {
       // The synced types can be newer than the CS2 build running the script
