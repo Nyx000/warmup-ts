@@ -130,6 +130,8 @@ const gunLadder = ladder({
   killsOn: KILLS_ON,
   // 30 minutes on the round clock, then a draw and a new match
   timeLimit: 30 * 60,
+  // Four times a knife's running speed
+  lapSpeed: 1000,
   onKillCount: playKillSound,
   onWin: (winner) => {
     celebrateWin(winner);

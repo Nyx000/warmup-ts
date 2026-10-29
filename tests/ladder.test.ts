@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createGamemode } from "../src/core/gamemode";
-import { CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "./fake-point-script";
+import { CSInputs, CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "./fake-point-script";
 import { ladder, type MatchResult } from "../src/gamemodes/gun-game/ladder";
 
 const LADDER = ["weapon_glock", "weapon_deagle", "weapon_knife"];
@@ -117,6 +117,41 @@ test("a win freezes and disarms everyone but the winner, and only the winner can
   kill(carol, bob, KNIFE);
   kill(carol, bob, KNIFE);
   expect(carol.weapons).toEqual([]);
+});
+
+test("on the knife level, the victory lap included, a player holds the knife alone", () => {
+  start();
+  const [alice, bob] = [join("Alice"), join("Bob")];
+  kill(alice, bob, KNIFE);
+  kill(alice, bob, KNIFE);
+  alice.weapons.push("weapon_ak47");
+  engine.tick();
+  expect(alice.weapons).toEqual(["weapon_knife"]);
+
+  kill(alice, bob, KNIFE);
+  alice.weapons.push("weapon_hegrenade");
+  engine.tick();
+  expect(alice.weapons).toEqual(["weapon_knife"]);
+});
+
+test("with lapSpeed, the winner runs at that speed along their aim while a direction key is held", () => {
+  createGamemode({ name: "Test", plugins: [ladder({ weapons: LADDER, lapSpeed: 1000 })] });
+  engine.activate();
+  const [alice, bob] = [join("Alice"), join("Bob")];
+  for (let i = 0; i < 3; i++) kill(alice, bob, KNIFE);
+
+  alice.velocity = { x: 0, y: 0, z: 50 };
+  engine.tick();
+  // No key held: the winner's own movement
+  expect(alice.velocity).toEqual({ x: 0, y: 0, z: 50 });
+
+  // Aiming along +y, strafing right runs along +x; the jump keeps its vertical speed
+  alice.angles.yaw = 90;
+  alice.inputs = CSInputs.RIGHT;
+  engine.tick();
+  expect(alice.velocity?.x).toBeCloseTo(1000);
+  expect(alice.velocity?.y).toBeCloseTo(0);
+  expect(alice.velocity?.z).toBe(50);
 });
 
 test("after the victory lap the match ends on the scoreboard with its stats, and the next starts everyone over", () => {

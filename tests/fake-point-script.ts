@@ -27,6 +27,8 @@ export class CSPlayerPawn {
   moveType: number = CSMoveType.WALK;
   position = { x: 0, y: 0, z: 0 };
   angles = { pitch: 0, yaw: 0, roll: 0 };
+  /** CSInputs held down, as a bit mask. */
+  inputs = 0;
   glowing = false;
   health = 100;
   /** The last velocity Teleport set. */
@@ -59,6 +61,9 @@ export class CSPlayerPawn {
   DestroyWeapons() { this.weapons = []; }
   GiveNamedItem(name: string) { this.weapons.push(name); }
   FindWeapon(name: string) { return this.weapons.includes(name) ? {} : undefined; }
+  FindWeaponBySlot(slot: number) { return this.weapons.some((name) => gearSlot(name) === slot) ? {} : undefined; }
+  IsInputPressed(input: number) { return (this.inputs & input) !== 0; }
+  GetAbsVelocity() { return { ...(this.velocity ?? { x: 0, y: 0, z: 0 }) }; }
 }
 
 export class CSPlayerController {
@@ -228,6 +233,24 @@ export function weapon(type: number) {
 }
 
 // Values from cs_script.d.ts
+export const CSGearSlot = { INVALID: -1, RIFLE: 0, PISTOL: 1, KNIFE: 2, GRENADES: 3, C4: 4, BOOSTS: 5 } as const;
+
+export const CSInputs = {
+  NONE: 0, FORWARD: 1 << 0, BACK: 1 << 1, LEFT: 1 << 2, RIGHT: 1 << 3, WALK: 1 << 4, DUCK: 1 << 5, JUMP: 1 << 6,
+  USE: 1 << 7, ATTACK: 1 << 8, ATTACK2: 1 << 9, RELOAD: 1 << 10, SHOW_SCORES: 1 << 11, LOOK_AT_WEAPON: 1 << 12,
+} as const;
+
+const PISTOLS = ["glock", "hkp2000", "usp_silencer", "p250", "elite", "fiveseven", "tec9", "cz75a", "revolver", "deagle"];
+const GRENADES = ["hegrenade", "flashbang", "smokegrenade", "molotov", "incgrenade", "decoy"];
+
+function gearSlot(name: string): number {
+  const item = name.replace("weapon_", "");
+  if (item === "knife") return CSGearSlot.KNIFE;
+  if (item === "c4") return CSGearSlot.C4;
+  if (GRENADES.includes(item)) return CSGearSlot.GRENADES;
+  return PISTOLS.includes(item) ? CSGearSlot.PISTOL : CSGearSlot.RIFLE;
+}
+
 export const CSDamageTypes = {
   GENERIC: 0, CRUSH: 1 << 0, BULLET: 1 << 1, SLASH: 1 << 2, BURN: 1 << 3, VEHICLE: 1 << 4, FALL: 1 << 5,
   BLAST: 1 << 6, CLUB: 1 << 7, SHOCK: 1 << 8, SONIC: 1 << 9, BUCKSHOT: 1 << 10, DROWN: 1 << 11,

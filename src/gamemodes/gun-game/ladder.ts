@@ -1,16 +1,21 @@
 /**
  * The gun game ladder: a few kills move the killer one weapon up the ladder, and a knife kill moves
  * them up at once. A knife kill on the last weapon wins: for a short victory lap everyone
- * else is frozen, nobody respawns, and only the winner's knife hurts; then the match ends
+ * else is frozen, nobody respawns, and only the winner's knife hurts (at lapSpeed, if set, the
+ * winner runs that fast); then the match ends
  * on the scoreboard and the next one starts everyone on the first weapon. Otherwise
  * players respawn, nobody can buy, and the round runs until someone wins or, with a time
  * limit, until the clock runs out and the match ends in a draw. On the grenade level a player
  * holds grenades and nothing else, and never runs out. Killing yourself, or dying
- * to the world, drops you a weapon. Pair it with teamRules({ damage: "all" }) for free-for-all.
+ * to the world, drops you a weapon. On the knife level, the victory lap included, a player holds
+ * the knife alone: anything else they come to carry is taken away. Pair it with
+ * teamRules({ damage: "all" }) for free-for-all.
  */
 
 import {
   Console,
+  CSGearSlot,
+  CSInputs,
   CSMoveType,
   CSPlayerPawn,
   CSRoundEndReason,
@@ -53,6 +58,8 @@ const RULES = {
 };
 
 const GRENADE = "weapon_hegrenade";
+const KNIFE = "weapon_knife";
+const NOT_KNIFE_SLOTS = [CSGearSlot.RIFLE, CSGearSlot.PISTOL, CSGearSlot.GRENADES, CSGearSlot.C4];
 // Between a throw and a new grenade, for a thrower whose grenade is gone
 const GRENADE_COOLDOWN_SECONDS = 1;
 // The longest round time that holds (measured 2026-10-27)
@@ -81,6 +88,8 @@ export interface LadderConfig {
   killsOn?: Record<string, number>;
   /** Seconds a match lasts before it ends in a draw; without one it lasts until someone wins. */
   timeLimit?: number;
+  /** The winner's running speed on the victory lap, in units a second; without one it's their own. */
+  lapSpeed?: number;
   /**
    * Each kill that counts toward the next weapon, with the killer's ladder weapon, their kills on it
    * (all it needs when the kill moves them up or wins) and whether it was a knife kill.
@@ -114,6 +123,7 @@ export function ladder({
   killsPerLevel = 3,
   killsOn = {},
   timeLimit,
+  lapSpeed,
   onKillCount = () => {},
   onWin = () => {},
   onDemote = () => {},
@@ -137,7 +147,7 @@ export function ladder({
     const weapon = weapons[levels.get(slot) ?? 0];
     pawn.DestroyWeapons();
     // The grenade level carries the grenade alone, so it is what the player holds and nothing else can be drawn
-    if (weapon !== "weapon_knife" && weapon !== GRENADE) pawn.GiveNamedItem("weapon_knife");
+    if (weapon !== KNIFE && weapon !== GRENADE) pawn.GiveNamedItem(KNIFE);
     pawn.GiveNamedItem(weapon, true);
     // With a second grenade and infinite reserve ammo, a throw leaves the grenade in hand, so nothing
     // else is drawn between throws: bots' reserve stayed at 2 through each throw (measured 2026-10-29)
@@ -196,6 +206,30 @@ export function ladder({
       }
       pawn.SetMoveType(CSMoveType.NONE);
       pawn.Teleport({ position, velocity: STILL });
+    }
+  }
+
+  // Movement has no speed setting a script can reach, so while a direction key is held the winner's
+  // ground speed is set every think, along their aim; jumps and falls keep their own vertical speed
+  function speedUp(pawn: CSPlayerPawn, speed: number): void {
+    if (!pawn.IsValid() || !pawn.IsAlive()) return;
+    const held = (input: CSInputs) => (pawn.IsInputPressed(input) ? 1 : 0);
+    const forward = held(CSInputs.FORWARD) - held(CSInputs.BACK);
+    const right = held(CSInputs.RIGHT) - held(CSInputs.LEFT);
+    if (forward === 0 && right === 0) return;
+    const yaw = (pawn.GetEyeAngles().yaw * Math.PI) / 180;
+    // Yaw turns counterclockwise, so right is a quarter turn clockwise of the aim
+    const x = forward * Math.cos(yaw) + right * Math.sin(yaw);
+    const y = forward * Math.sin(yaw) - right * Math.cos(yaw);
+    const length = Math.hypot(x, y);
+    pawn.Teleport({ velocity: { x: (x / length) * speed, y: (y / length) * speed, z: pawn.GetAbsVelocity().z } });
+  }
+
+  function lockToKnife(): void {
+    for (const pawn of livePawns()) {
+      const slot = pawn.GetPlayerController()?.GetPlayerSlot();
+      if (slot === undefined || weapons[levels.get(slot) ?? 0] !== KNIFE) continue;
+      if (NOT_KNIFE_SLOTS.some((gearSlot) => pawn.FindWeaponBySlot(gearSlot))) equip(pawn);
     }
   }
 
@@ -348,7 +382,11 @@ export function ladder({
 
     onThink() {
       rules.onThink();
-      if (phase.kind === "victoryLap") holdStill(phase);
+      lockToKnife();
+      if (phase.kind === "victoryLap") {
+        holdStill(phase);
+        if (lapSpeed !== undefined) speedUp(phase.winner, lapSpeed);
+      }
       if (phase.kind !== "playing") return;
       const now = Instance.GetGameTime();
       if (deadline !== undefined && now >= deadline && !GameRules.IsWarmupPeriod()) timeUp();
