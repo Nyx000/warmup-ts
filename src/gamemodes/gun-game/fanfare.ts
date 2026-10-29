@@ -66,6 +66,11 @@ export function playKillSound({ killer, victim, weapon, kills, knifed }: { kille
   else killSound(head, PISTOL_BELLS[Math.min(kills, PISTOL_BELLS.length) - 1]);
 }
 
+/** Arms Race's own demotion cue, from where a player killed themselves. */
+export function playDemotion({ player }: { player: CSPlayerPawn }): void {
+  killSound(player.GetEyePosition(), "UI.ArmsRace.Demoted");
+}
+
 export function celebrateWin(winner: CSPlayerPawn): void {
   // The map's own chickens, which the next match's round restart puts back
   const flock = Instance.FindEntitiesByClass("chicken").filter((chicken) => chicken.IsValid() && chicken.IsAlive()).slice(0, WIN_FEATHER_BURSTS);

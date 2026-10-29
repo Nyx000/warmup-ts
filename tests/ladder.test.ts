@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createGamemode } from "../src/core/gamemode";
-import { CSGrenadeType, CSInputs, CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "./fake-point-script";
+import { CSMoveType, CSPlayerPawn, CSRoundEndReason, CSWeaponType, engine, weapon } from "./fake-point-script";
 import { ladder, type MatchResult } from "../src/gamemodes/gun-game/ladder";
 
 const LADDER = ["weapon_glock", "weapon_deagle", "weapon_knife"];
@@ -17,7 +17,7 @@ test("the ladder's server rules are set and checked, an empty default pistol inc
   engine.tick();
   expect(engine.convars.get("mp_t_default_secondary")).toBe("");
   expect(engine.convars.get("sv_infinite_ammo")).toBe(2);
-  expect(engine.logs).toContain("[ladder] All 14 convars read back as set (Console.SetConvar)");
+  expect(engine.logs).toContain("[ladder] All 16 convars read back as set (Console.SetConvar)");
 });
 
 function join(name: string): CSPlayerPawn {
@@ -177,11 +177,21 @@ test("with a time limit the match ends in a draw when time runs out, with no win
 test.each([
   ["a suicide", (victim: CSPlayerPawn) => victim],
   ["a death to the world", () => undefined],
-])("%s moves nobody up", (_, attackerOf) => {
-  start();
+])("%s drops the player a weapon, and nobody below the first", (_, attackerOf) => {
+  const demotions: string[] = [];
+  createGamemode({ name: "Test", plugins: [ladder({ weapons: LADDER, onDemote: ({ weapon }) => demotions.push(weapon) })] });
+  engine.activate();
   const alice = join("Alice");
-  kill(attackerOf(alice), alice, KNIFE);
+  const bob = join("Bob");
+  for (let i = 0; i < 3; i++) kill(alice, bob);
+
+  kill(attackerOf(alice), alice);
+  engine.fire("OnPlayerReset", { player: alice });
   expect(alice.weapons).toEqual(["weapon_knife", "weapon_glock"]);
+  kill(attackerOf(alice), alice);
+  engine.fire("OnPlayerReset", { player: alice });
+  expect(alice.weapons).toEqual(["weapon_knife", "weapon_glock"]);
+  expect(demotions).toEqual(["weapon_glock"]);
 });
 
 test("a connect without a player is ignored", () => {
@@ -190,51 +200,15 @@ test("a connect without a player is ignored", () => {
   expect(engine.logs.some((line) => line.includes("threw"))).toBe(false);
 });
 
-const { ATTACK, ATTACK2 } = CSInputs;
-
-test.each([
-  ["left click throws overhand", ATTACK, 1],
-  ["right click throws underhand", ATTACK2, 0],
-  ["both throw in between", ATTACK | ATTACK2, 0.5],
-])("on the grenade level a player holds nothing; %s", (_, inputs, throwStrength) => {
+test("on the grenade level a player holds only the grenade, and gets a new one a second after throwing", () => {
   start(["weapon_hegrenade", "weapon_knife"]);
   const alice = join("Alice");
+  expect(alice.weapons).toEqual(["weapon_hegrenade"]);
+  engine.fire("OnGrenadeThrow", { weapon: { GetOwner: () => alice } });
+  alice.weapons = [];
+
+  engine.tick(0.5);
   expect(alice.weapons).toEqual([]);
-  alice.inputs = inputs;
-  engine.tick(0.05);
-  expect(engine.grenades).toEqual([{ type: CSGrenadeType.HE, thrower: alice, throwStrength }]);
-});
-
-test("held fire throws once a second, and not during the victory lap", () => {
-  start(["weapon_hegrenade", "weapon_knife"]);
-  const alice = join("Alice");
-  alice.inputs = ATTACK;
-  for (let i = 0; i < 20; i++) engine.tick(0.05);
-  expect(engine.grenades).toHaveLength(1);
-  engine.tick(0.05);
-  expect(engine.grenades).toHaveLength(2);
-
-  const bob = join("Bob");
-  bob.inputs = ATTACK;
-  kill(bob, alice, KNIFE);
-  kill(bob, alice, KNIFE);
-  engine.tick(2);
-  expect(engine.grenades).toHaveLength(2);
-});
-
-test("a bot on the grenade level carries one, and gets a new one a second after throwing", () => {
-  start(["weapon_hegrenade", "weapon_knife"]);
-  const player = engine.addPlayer("Bot");
-  player.bot = true;
-  engine.fire("OnPlayerConnect", { player });
-  const bot = player.GetPlayerPawn();
-  engine.fire("OnPlayerReset", { player: bot });
-  expect(bot.weapons).toEqual(["weapon_knife", "weapon_hegrenade"]);
-  engine.fire("OnGrenadeThrow", { weapon: { GetOwner: () => bot } });
-  bot.weapons = ["weapon_knife"];
-
   engine.tick(0.5);
-  expect(bot.weapons).toEqual(["weapon_knife"]);
-  engine.tick(0.5);
-  expect(bot.weapons).toEqual(["weapon_knife", "weapon_hegrenade"]);
+  expect(alice.weapons).toEqual(["weapon_hegrenade"]);
 });

@@ -32,8 +32,6 @@ export class CSPlayerPawn {
   /** The last velocity Teleport set. */
   velocity: { x: number; y: number; z: number } | undefined;
   name = "";
-  /** CSInputs bits held down. */
-  inputs = 0;
 
   constructor(private readonly controller: CSPlayerController) {}
 
@@ -58,7 +56,6 @@ export class CSPlayerPawn {
   Unglow() { this.glowing = false; }
   GetPlayerController() { return this.controller; }
   SetEntityName(name: string) { this.name = name; }
-  IsInputPressed(inputs: number) { return (this.inputs & inputs) !== 0; }
   DestroyWeapons() { this.weapons = []; }
   GiveNamedItem(name: string) { this.weapons.push(name); }
 }
@@ -98,8 +95,6 @@ export const engine = {
   roundEnds: [] as [number, number | undefined][],
   /** GameRules.AddTeamScore calls: [team, score]. */
   scores: [] as [number, number][],
-  /** Instance.SpawnGrenadeProjectile configs, in order. */
-  grenades: [] as { type: number; thrower?: CSPlayerPawn; throwStrength?: number }[],
   /** Instance.On* callbacks and "Console.<method>" names to leave out, as an older CS2 build would. */
   unsupported: new Set<string>(),
   /** Map entities Instance.FindEntityByName and FindEntitiesByName can find, by name. */
@@ -123,7 +118,6 @@ export const engine = {
     this.warmupPeriod = false;
     this.roundEnds.length = 0;
     this.scores.length = 0;
-    this.grenades.length = 0;
     this.convars.clear();
     this.refused.clear();
     this.booleans.clear();
@@ -173,7 +167,6 @@ const instanceMethods: Record<string, unknown> = {
   GetGameTime: () => time,
   GetAllPlayerControllers: () => [...players],
   GetPlayerController: (slot: number) => players.find((player) => player.GetPlayerSlot() === slot),
-  SpawnGrenadeProjectile: (config: (typeof engine.grenades)[number]) => void engine.grenades.push(config),
   FindEntityByName: (name: string) => engine.entities.get(name),
   FindEntitiesByName: (name: string) => (engine.entities.has(name) ? [engine.entities.get(name)] : []),
   EntFireAtTarget: (config: (typeof engine.inputs)[number]) => void engine.inputs.push(config),
@@ -251,13 +244,6 @@ export const CSRoundEndReason = {
   HOSTAGES_RESCUED: 6, HOSTAGES_NOT_RESCUED: 7, CTS_WIN: 8, TERRORISTS_WIN: 9, CTS_SURRENDER: 10,
   TERRORISTS_SURRENDER: 11,
 } as const;
-
-export const CSInputs = {
-  NONE: 0, FORWARD: 1 << 0, BACK: 1 << 1, LEFT: 1 << 2, RIGHT: 1 << 3, WALK: 1 << 4, DUCK: 1 << 5, JUMP: 1 << 6,
-  USE: 1 << 7, ATTACK: 1 << 8, ATTACK2: 1 << 9, RELOAD: 1 << 10, SHOW_SCORES: 1 << 11, LOOK_AT_WEAPON: 1 << 12,
-} as const;
-
-export const CSGrenadeType = { HE: 0, FLASHBANG: 1, MOLOTOV: 2, INCENDIARY: 3, DECOY: 4, SMOKE: 5 } as const;
 
 export const CSHitGroup = {
   INVALID: -1, GENERIC: 0, HEAD: 1, CHEST: 2, STOMACH: 3, LEFTARM: 4, RIGHTARM: 5, LEFTLEG: 6, RIGHTLEG: 7,

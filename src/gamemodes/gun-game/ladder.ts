@@ -5,14 +5,12 @@
  * on the scoreboard and the next one starts everyone on the first weapon. Otherwise
  * players respawn, nobody can buy, and the round runs until someone wins or, with a time
  * limit, until the clock runs out and the match ends in a draw. On the grenade level a player
- * holds nothing and throws by clicking. Pair it with
- * teamRules({ damage: "all" }) for free-for-all.
+ * holds a grenade and nothing else, and gets a new one after each throw. Killing yourself, or dying
+ * to the world, drops you a weapon. Pair it with teamRules({ damage: "all" }) for free-for-all.
  */
 
 import {
   Console,
-  CSGrenadeType,
-  CSInputs,
   CSMoveType,
   CSPlayerPawn,
   CSRoundEndReason,
@@ -44,13 +42,16 @@ const RULES = {
   sv_buy_status_override: 3,
   mp_t_default_secondary: "",
   mp_ct_default_secondary: "",
+  // The engine's spawn knife arrives after equip() runs, so the grenade level would still carry one
+  mp_t_default_melee: "",
+  mp_ct_default_melee: "",
   mp_death_drop_gun: 0,
   mp_death_drop_grenade: 0,
   sv_infinite_ammo: 2,
 };
 
 const GRENADE = "weapon_hegrenade";
-// Between a player's throws, and between a bot's throw and its next grenade
+// Between a throw and the thrower's next grenade
 const GRENADE_COOLDOWN_SECONDS = 1;
 // The longest round time that holds (measured 2026-10-27)
 const ENDLESS_ROUND_SECONDS = 86400;
@@ -85,6 +86,8 @@ export interface LadderConfig {
   onKillCount?: (kill: { killer: CSPlayerPawn; victim: CSPlayerPawn; weapon: string; kills: number; knifed: boolean }) => void;
   /** The winning knife kill, as the victory lap starts. */
   onWin?: (winner: CSPlayerPawn) => void;
+  /** A player who killed themselves or died to the world dropped to `weapon`. */
+  onDemote?: (demotion: { player: CSPlayerPawn; weapon: string }) => void;
   /** After the victory lap, before the reset: where match stats get saved. */
   onMatchEnd?: (result: MatchResult) => void;
 }
@@ -108,6 +111,7 @@ export function ladder({
   timeLimit,
   onKillCount = () => {},
   onWin = () => {},
+  onDemote = () => {},
   onMatchEnd = () => {},
 }: LadderConfig): Plugin & { killsOnWeapon(pawn: CSPlayerPawn): number; setWeapon(pawn: CSPlayerPawn, weapon: string): boolean } {
   const rules = convars(RULES, "ladder");
@@ -119,38 +123,27 @@ export function ladder({
   let phase: Phase = { kind: "playing" };
   // Game time the match runs out; game time rather than the HUD clock, which the engine lets run past 0
   let deadline: number | undefined;
-  // The timer that gives a bot its next grenade
+  // The timer that gives a player their next grenade
   const grenadeRefills = playerStore<Timer>({ persist: false });
-  // Game time a player can next throw
-  const nextThrow = playerStore<number>({ persist: false });
 
   function equip(pawn: CSPlayerPawn): void {
     const slot = pawn.GetPlayerController()?.GetPlayerSlot();
     if (slot === undefined || !pawn.IsAlive()) return;
     const weapon = weapons[levels.get(slot) ?? 0];
     pawn.DestroyWeapons();
-    // A player throws by clicking (throwGrenades); a bot can't, so it carries a real one
-    if (weapon === GRENADE && !pawn.GetPlayerController()?.IsBot()) return;
-    if (weapon !== "weapon_knife") pawn.GiveNamedItem("weapon_knife");
+    // The grenade level carries the grenade alone, so it is what the player holds and nothing else can be drawn
+    if (weapon !== "weapon_knife" && weapon !== GRENADE) pawn.GiveNamedItem("weapon_knife");
     pawn.GiveNamedItem(weapon, true);
   }
 
-  // Left click throws overhand, right click underhand, both in between, as CS grenades do,
-  // but at once: SpawnGrenadeProjectile launches from the thrower's own throw position and
-  // velocity, and credits kills to them (measured 2026-10-27). Held fire throws each cooldown
-  function throwGrenades(now: number): void {
-    for (const pawn of livePawns()) {
-      const controller = pawn.GetPlayerController();
-      if (!controller || controller.IsBot()) continue;
-      const slot = controller.GetPlayerSlot();
-      if (weapons[levels.get(slot) ?? 0] !== GRENADE || now < (nextThrow.get(slot) ?? 0)) continue;
-      const overhand = pawn.IsInputPressed(CSInputs.ATTACK);
-      const underhand = pawn.IsInputPressed(CSInputs.ATTACK2);
-      if (!overhand && !underhand) continue;
-      nextThrow.set(slot, now + GRENADE_COOLDOWN_SECONDS);
-      const throwStrength = overhand && underhand ? 0.5 : overhand ? 1 : 0;
-      Instance.SpawnGrenadeProjectile({ type: CSGrenadeType.HE, thrower: pawn, throwStrength });
-    }
+  function demote(pawn: CSPlayerPawn): void {
+    const slot = pawn.GetPlayerController()?.GetPlayerSlot();
+    if (slot === undefined) return;
+    kills.delete(slot);
+    const level = levels.get(slot) ?? 0;
+    if (level === 0) return;
+    levels.set(slot, level - 1);
+    onDemote({ player: pawn, weapon: weapons[level - 1] });
   }
 
   function announce(message: string): void {
@@ -254,7 +247,7 @@ export function ladder({
       rules.init();
     },
 
-    players: { levels, kills, matchKills, grenadeRefills, nextThrow },
+    players: { levels, kills, matchKills, grenadeRefills },
 
     onRoundStart() {
       GameRules.SetRoundRemainingTime(timeLimit ?? ENDLESS_ROUND_SECONDS);
@@ -286,7 +279,12 @@ export function ladder({
     },
 
     onPlayerKill({ player, attacker, weapon }) {
-      if (phase.kind !== "playing" || !(attacker instanceof CSPlayerPawn) || attacker === player) return;
+      if (phase.kind !== "playing") return;
+      // Your own grenade, a fall or the kill command
+      if (!(attacker instanceof CSPlayerPawn) || attacker === player) {
+        demote(player);
+        return;
+      }
       const killer = attacker.GetPlayerController();
       if (!killer) return;
 
@@ -343,7 +341,6 @@ export function ladder({
       if (phase.kind !== "playing") return;
       const now = Instance.GetGameTime();
       if (deadline !== undefined && now >= deadline && !GameRules.IsWarmupPeriod()) timeUp();
-      else throwGrenades(now);
     },
   };
 }

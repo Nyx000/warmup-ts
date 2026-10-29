@@ -74,7 +74,7 @@ Out of the box you get PistolGG, a free-for-all pistol gun game, headshots only.
 ladder of nine pistols, four kills on the HE grenade, and then the knife. A knife kill moves you up at once, whatever your
 kill count on the current weapon, and a knife kill on the last weapon wins the match: everyone else is
 frozen for a short victory lap, then the end screen names the winner: the team everyone plays on
-scores a point and takes the winner's name.
+scores a point and takes the winner's name. Killing yourself, or dying to the world, drops you back a weapon.
 
 Players spawn at random points away from each other, with no freeze time, and a sound plays from each
 player as they spawn. A headshot sprays blood, and each kill rings a bell from the victim's head, a step higher
@@ -332,7 +332,7 @@ test("a bullet to the chest does no damage", () => {
 | `tick(seconds)` | Moves game time forward and runs the think loop once if it is due. |
 | `addPlayer(name)` | Adds a connected player and returns its controller (`.pawn` is the pawn). |
 | `reload(load)` | A `script_reload`: the old script's save step, a fresh `load()`, then the new script's restore step. |
-| `logs`, `commands`, `convars`, `roundEnds`, `grenades` | What the script logged, ran and set. |
+| `logs`, `commands`, `convars`, `roundEnds` | What the script logged, ran and set. |
 | `freezePeriod`, `warmupPeriod` | What `GameRules.IsFreezePeriod()` and `IsWarmupPeriod()` return. |
 | `entities` | Map entities by name, which `Instance.FindEntityByName` and `FindEntitiesByName` find. |
 | `classes` | Map entities by class name, which `Instance.FindEntitiesByClass` finds. |
