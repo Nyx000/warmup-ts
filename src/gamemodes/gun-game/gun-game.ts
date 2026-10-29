@@ -121,8 +121,10 @@ const gunLadder = ladder({
   onKillCount: playKillSound,
   onWin: celebrateWin,
   onDemote: playDemotion,
-  // As the scoreboard comes up, after a win or a draw
-  onMatchEnd: () => {
+  // As the scoreboard comes up, after a win or a draw. The [match] line is read by the server's stats
+  // service, which knows each slot's Steam ID from the engine's connect lines
+  onMatchEnd: ({ winner }) => {
+    Console.Log(winner ? `[match] winner slot=${winner.slot}` : "[match] draw");
     say("Powered by WarmupTS");
     rotation.next(SCOREBOARD_SECONDS);
   },

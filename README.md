@@ -187,7 +187,8 @@ gun game. `convars` applies the `SERVER` settings. The rest is extras: `devSkip`
 effect, `onKillCount` and `onWin` play the fanfare, `moneyLog` logs each player's money, `welcome` greets each
 human player in chat, `mapRotation` moves to another Active Duty map after each match or when most players type `!rtv`, `randomSpawns` places players and `spawnSound` layers the spawn sounds.
 `ladder` also takes an optional `onMatchEnd({ winner, players })`, called after the victory lap and
-before the next match starts, for saving match stats.
+before the next match starts, for saving match stats; `winner` is the winner's slot and name, absent on a draw.
+PistolGG logs it as a `[match]` line for a stats service that reads the server log.
 
 `src/gamemode.ts` picks which gamemode runs:
 
