@@ -47,16 +47,17 @@ const WIN_BEAT_SECONDS = 0.6;
 
 /**
  * Through the victory lap, feather bursts (the game's cheaper chicken death: a puff and a feather
- * spray) all around the winner: `FEATHER_BURSTS` every `FEATHER_STEP` seconds, scattered within
- * `FEATHER_RADIUS` across and `FEATHER_HEIGHT` up. Each burst holds a pool name for a second, so the
- * pool caps it at about 58 a second.
+ * spray) out of the winner: `FEATHER_BURSTS` every `FEATHER_STEP` seconds, scattered within
+ * `FEATHER_RADIUS` across and `FEATHER_HEIGHT` up, about a player's body, so it's plain whose they
+ * are and they trail behind the lap's run. Each burst holds a pool name for a second, so the pool
+ * caps it at about 58 a second. At 180 across, the peak took a client from 235 to 95 FPS (2026-10-29).
  */
 const FEATHER_POOL = 64;
 const FEATHER_SECONDS = 5;
 const FEATHER_STEP = 0.1;
 const FEATHER_BURSTS = 5;
-const FEATHER_RADIUS = 180;
-const FEATHER_HEIGHT = 140;
+const FEATHER_RADIUS = 48;
+const FEATHER_HEIGHT = 72;
 const feathers = effectPool("fanfare", "wts_feathers", FEATHER_POOL);
 
 const killSound = mapSound("fanfare", "wts_headshot_sound");
