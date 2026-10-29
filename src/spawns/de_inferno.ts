@@ -4,7 +4,7 @@
  * longest open line of sight.
  */
 
-import type { SpawnPoint } from "../plugins/players/random-spawns";
+import type { SpawnPoint } from "../plugins/random-spawns";
 
 export const deInferno: SpawnPoint[] = [
   { position: { x: 2451.0, y: -481.3, z: 117.3 }, yaw: 112 },

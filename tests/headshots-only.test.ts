@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { CSDamageTypes, CSHitGroup } from "cs_script/point_script";
 import { createGamemode } from "../src/core/gamemode";
 import { engine } from "./fake-point-script";
-import { headshotsOnly } from "../src/plugins/combat/headshots-only";
+import { headshotsOnly } from "../src/plugins/headshots-only";
 
 test.each([
   ["a bullet to the head hurts", CSDamageTypes.BULLET, CSHitGroup.HEAD, undefined],

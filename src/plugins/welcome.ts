@@ -3,15 +3,15 @@
  * sees who arrived.
  */
 
-import { Console } from "cs_script/point_script";
-import type { Plugin } from "../../core/plugin";
+import { say } from "../core/chat";
+import type { Plugin } from "../core/plugin";
 
 export function welcome(message: (name: string) => string): Plugin {
   return {
     name: "welcome",
     onPlayerActivate({ player }) {
       if (player.IsBot()) return;
-      Console.ServerCommand(`say ${message(player.GetPlayerName().replace(/[";]/g, ""))}`);
+      say(message(player.GetPlayerName()));
     },
   };
 }

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createGamemode } from "../src/core/gamemode";
-import { randomSpawns } from "../src/plugins/players/random-spawns";
+import { randomSpawns } from "../src/plugins/random-spawns";
 import { engine } from "./fake-point-script";
 
 const at = (x: number) => ({ position: { x, y: 0, z: 0 }, yaw: 0 });

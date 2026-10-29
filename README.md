@@ -35,6 +35,16 @@ bun run tools    # starts CS2 with Workshop Tools and the addon
 bun run dev      # rebuilds and copies the script into the addon on every save
 ```
 
+### Start a new gamemode
+
+```bash
+bun create Nyx000/warmup-ts my-gamemode
+```
+
+Bun downloads the repo's files without its history, starts a fresh git repo, runs `bun install`, and
+the `bun-create` entry in `package.json` drops this repo's `repository`, `bugs` and `homepage` links
+from your copy. PistolGG is still in it as the example; follow [Making your own](#making-your-own).
+
 Workshop Tools mounts one addon, named `cs2_gamemode_framework` (`ADDON_NAME` in
 `tools/launch-cs2.mjs` and `tools/utils/cs2-path.mjs`), and `bun run tools` assumes it exists. The
 script lands in the addon's `scripts` folder as `gamemode.vjs`. Your map needs a `point_script` entity
@@ -140,7 +150,7 @@ const KILLS_PER_WEAPON = 3;
 const KILLS_ON = { weapon_hegrenade: 4 };
 
 /** How hard a killing headshot throws the body, one per kill on the same weapon. */
-const RAGDOLL_LAUNCHES = [{ speed: 600, lift: 25 }, { speed: 900, lift: 30 }, { speed: 1200, lift: 40 }];
+const RAGDOLL_LAUNCHES = [600, 900, 1300].map((speed) => ({ speed, lift: 0 }));
 
 const gunLadder = ladder({
   weapons: WEAPONS,
@@ -197,6 +207,10 @@ A plugin that throws is logged and skipped for that call while the rest carry on
 plugins build on each other: `onModifyPlayerDamage` runs as a chain, and `teamRules` goes before any
 plugin that reads a player's team in `onPlayerConnect`.
 
+When one plugin needs something from another, the gamemode file passes it in as a setting, the way
+`ragdollPunch` gets `pick: (killer) => gunLadder.killsOnWeapon(killer)` above. The link is typed and
+sits in the plugin list where you can see it, and neither plugin imports the other.
+
 ### Making your own
 
 1. Make a folder in `src/gamemodes/`, with a main file named after it (`my-mode/my-mode.ts`). Copying
@@ -206,18 +220,19 @@ plugin that reads a player's team in `onPlayerConnect`.
 3. Point `src/gamemode.ts` at it.
 4. Run `bun run check`, then `bun run dev` to try it in the game.
 
-Plugins only your gamemode uses go in its folder. When a second gamemode needs one, move it to
-`src/plugins/`, under the category that fits (each category folder has a short README).
+Plugins only your gamemode uses go in its folder; [Shared or one gamemode's own](#shared-or-one-gamemodes-own)
+says which go where.
 
 ```
 src/
 ├── gamemode.ts          entry point: picks the gamemode
-├── core/                the framework: plugin contract, gamemode runtime, player stores, timers, convars, rules
+├── core/                the framework: plugin contract, gamemode runtime, player stores, timers, convars, rules, chat commands and `say`
 ├── gamemodes/
 │   └── gun-game/        gun-game.ts (the gamemode), ladder.ts (its main plugin)
-├── plugins/             shared plugins: combat, loadout, players, economy, world, hud, dev
+├── plugins/             shared plugins, one file each
 ├── spawns/              per-map spawn lists for randomSpawns
 └── types/cs_script.d.ts Valve's API types, synced from your CS2 install
+docs/plugins.md          the plugin reference: every hook, per-player data, timers, settings
 tests/                   every test, plus the fake cs_script runtime they run against
 tools/                   build, deploy, launch and type-sync scripts behind the bun run commands
 dist/                    build output (gamemode.vjs), not committed
@@ -225,109 +240,46 @@ dist/                    build output (gamemode.vjs), not committed
 
 ## Writing a plugin
 
-A plugin is an object with a `name` and whichever hooks it needs. All hooks are optional.
+A plugin is an object with a `name` and whichever hooks it needs. All hooks are optional. The smallest
+useful one announces each kill in chat; put it in `src/plugins/kill-feed.ts`:
 
 ```typescript
-import { Console } from "cs_script/point_script";
+import { say } from "../../core/chat";
 import type { Plugin } from "../../core/plugin";
 
-export function joinCounter(message: string): Plugin<{ joined: number }> {
-  let state = { joined: 0 };
-
+export function killFeed(): Plugin {
   return {
-    name: "joinCounter",
-    saveState: () => state, // kept across script_reload
-    restoreState(saved) { state = saved; },
-
-    onPlayerActivate({ player }) {
-      state.joined++;
-      Console.ClientCommand(player.GetPlayerSlot(), `echo "${message}"`);
+    name: "killFeed",
+    onPlayerKill({ player }) {
+      const victim = player.GetPlayerController()?.GetPlayerName() ?? "someone";
+      say(`${victim} was killed`);
     },
   };
 }
 ```
 
-Then add `joinCounter("Welcome!")` to your gamemode's plugin list. `src/plugins/dev/example.ts` is a
-starting template, and `debug()` from `src/plugins/dev/debug.ts` logs every event as it fires.
+Add `killFeed()` to your gamemode's `plugins` list and run `bun run dev`. `say` sends a line to
+everyone and strips the quotes and semicolons that would end the console command early.
 
-The hooks that belong to the plugin itself:
-
-| Hook | When it runs |
-|---|---|
-| `init()` | On map load, and again after a hot reload. Start timers and apply settings here. |
-| `dispose()` | Before a hot reload: stop whatever `init()` started. |
-| `saveState()`, `restoreState(state)` | Plain data carried across a hot reload. Entities don't survive one; store names. |
-| `onHotReloadComplete()` | After a hot reload. `onPlayerActivate` doesn't fire again for players already connected. |
-| `onThink()` | Every think tick, `thinkInterval` seconds apart. |
-| `onFreezeTimeEnd()`, `onWarmupEnd()` | See below. |
-
-Every other hook is a Valve callback with `on` in front: `Instance.OnPlayerKill` becomes `onPlayerKill`.
-`ENGINE_EVENTS` in `src/core/plugin.ts` lists all 37, and `cs_script.d.ts` documents each event's
-fields. Each hook gets Valve's event object unchanged: `Instance.OnRoundEnd` becomes
-`onRoundEnd({ winningTeam, reason })`. A few behave differently:
-
-- `onModifyPlayerDamage` is a chain. Each plugin sees the damage as the plugins before it left it, and
-  returning `abort` stops it there.
-- `Instance.OnScriptInput` is keyed by input name, so a plugin registers it itself in `init()`.
-- `Instance.SetThink`, `SetNextThink` and every other `Instance.On*` callback belong to `createGamemode`:
-  cs_script refuses a second registration, so a plugin's own would fail; the lint rejects it outside `src/core/`.
-- `onFreezeTimeEnd` and `onWarmupEnd` have no engine event behind them. They fire when the think loop
-  sees `GameRules.IsFreezePeriod()` or `GameRules.IsWarmupPeriod()` turn false.
-- The `player` in an event is not always the same type: `onPlayerConnect` and `onPlayerActivate` give a
-  `CSPlayerController`, while `onPlayerReset` and `onPlayerTeamChanged` give a `CSPlayerPawn`. The engine
-  also sends some `onPlayerConnect` events (a bot joining) with no `player`, so check before using it.
-
-### Per-player data and timers
-
-Data kept per player goes in a `playerStore()`, a `Map` keyed by player slot. List it under `players` on
-the plugin and the gamemode drops a player's entry when they disconnect and carries the rest across
-`script_reload`, so there's no `saveState` to write for it. A store holding something that isn't plain
-data, such as a timer, takes `{ persist: false }`. `connectedPlayers()` lists the players currently on
-the server.
+A chat command needs no plugin of your own: `commands()` from `src/core/chat.ts` builds one. It matches
+the first word of a chat line case-insensitively, and the rest of the line arrives split into `args`:
 
 ```typescript
-import { CSPlayerPawn } from "cs_script/point_script";
-import { playerStore } from "../../core/players";
-import type { Plugin } from "../../core/plugin";
-
-export function killCount(): Plugin {
-  const kills = playerStore<number>();
-  return {
-    name: "killCount",
-    players: { kills },
-    onPlayerKill({ attacker }) {
-      const slot = attacker instanceof CSPlayerPawn ? attacker.GetPlayerController()?.GetPlayerSlot() : undefined;
-      if (slot !== undefined) kills.set(slot, (kills.get(slot) ?? 0) + 1);
-    },
-  };
-}
+commands({ "!rules": ({ player }) => say(`${player.GetPlayerName()}: headshots only`) }),
 ```
 
-`after(seconds, fn)` and `every(seconds, fn)`, from `src/core/timers.ts`, run a function later or
-repeatedly from the gamemode's think loop and return a timer to `cancel()`. A reload cancels every
-timer, so start the ones a plugin needs in `init()`.
+The engine can't hide a chat line, so everyone still sees `!rules`. `src/plugins/example.ts` is a longer template with
+saved state, and `debug()` from `src/plugins/debug.ts` logs every event as it fires.
 
-### Server settings and team rules
+### Shared or one gamemode's own
 
-Without `teamRules`, `convars` or `serverCommands`, WarmupTS leaves the server's rules alone.
+A plugin belongs in `src/plugins/` when it knows nothing about any one gamemode: everything it needs
+comes in through its options, the way `ragdollPunch` gets the kill count from `pick`. One that only makes
+sense in one gamemode, like PistolGG's weapon `ladder`, stays in that gamemode's folder, and a few lines
+used in one place, like PistolGG's `devSkip`, can sit right in the gamemode file.
 
-`convars({ mp_freezetime: 0, mp_t_default_secondary: "" })` sets server settings and then reads each one
-back. The console shows which way they were set (`Console.SetConvar`, or `Console.ServerCommand` on a CS2
-build without it) and names every setting the server did not take. Use `serverCommands` for anything
-that is a command rather than a convar.
-
-A `convars()` plugin is named `convars`, so a gamemode lists it once. A plugin with settings of its own
-calls `convars(values, "myPlugin")` inside itself and forwards `init()` and `onThink()` to it, as
-`ladder` does; the second argument is the log prefix.
-
-`teamRules` takes three options and also turns off team balancing and team limits, which would fight a
-gamemode that places players itself:
-
-| Option | Meaning |
-|---|---|
-| `autoAssign` | `Teams.CT` or `Teams.TERRORIST`: every connecting player joins this team, skipping team selection. |
-| `damage` | `"enemies"` (the default, as in normal CS), `"all"` for free-for-all, or `"none"`. |
-| `friendlyFire` | Only with `damage: "enemies"`. Defaults to `false`. |
+Every hook and how it behaves, per-player data, timers, server settings, team rules, and a table for
+readers coming from GMod, SourceMod or FiveM: [docs/plugins.md](docs/plugins.md).
 
 ## Things that will bite you
 
@@ -362,7 +314,7 @@ test. A test builds a gamemode from the plugin under test, then drives the fake:
 import { expect, test } from "bun:test";
 import { CSDamageTypes, CSHitGroup } from "cs_script/point_script";
 import { createGamemode } from "../src/core/gamemode";
-import { headshotsOnly } from "../src/plugins/combat/headshots-only";
+import { headshotsOnly } from "../src/plugins/headshots-only";
 import { engine } from "./fake-point-script";
 
 test("a bullet to the chest does no damage", () => {

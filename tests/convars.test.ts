@@ -47,3 +47,8 @@ test("a plugin built on convars reports under its own name", () => {
   start(teamRules({ autoAssign: Teams.CT, damage: "all" }));
   expect(engine.logs.some((line) => line.startsWith("[teamRules] All "))).toBe(true);
 });
+
+test("two convars plugins can share a gamemode", () => {
+  start(convars({ mp_freezetime: 0 }), convars({ mp_roundtime: 2 }));
+  expect(Object.fromEntries(engine.convars)).toEqual({ mp_freezetime: 0, mp_roundtime: 2 });
+});

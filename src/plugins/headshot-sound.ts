@@ -7,8 +7,8 @@
 
 import { CSHitGroup } from "cs_script/point_script";
 import type { CSPlayerPawn } from "cs_script/point_script";
-import type { Plugin } from "../../core/plugin";
-import { mapSound } from "../../core/sounds";
+import type { Plugin } from "../core/plugin";
+import { mapSound } from "../core/sounds";
 
 export function headshotSound({ entityName = "wts_headshot_sound", sounds = [] as string[] } = {}): Plugin {
   const play = mapSound("headshotSound", entityName);

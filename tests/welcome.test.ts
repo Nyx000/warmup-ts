@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createGamemode } from "../src/core/gamemode";
-import { welcome } from "../src/plugins/hud/welcome";
+import { welcome } from "../src/plugins/welcome";
 import { engine } from "./fake-point-script";
 
 test("humans are greeted by name as they join; bots aren't", () => {

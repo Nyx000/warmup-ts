@@ -11,8 +11,8 @@
 
 import { CSDamageFlags, CSDamageTypes, CSHitGroup, Instance } from "cs_script/point_script";
 import type { CSPlayerPawn, Vector } from "cs_script/point_script";
-import type { Plugin } from "../../core/plugin";
-import { every } from "../../core/timers";
+import type { Plugin } from "../core/plugin";
+import { every } from "../core/timers";
 
 /**
  * Units per second along the shooter's aim, and straight up (negative pushes down). A grenade

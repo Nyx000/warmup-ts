@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { CSDamageFlags, CSDamageTypes, CSHitGroup } from "cs_script/point_script";
 import { createGamemode } from "../src/core/gamemode";
-import { ragdollPunch } from "../src/plugins/combat/ragdoll-punch";
+import { ragdollPunch } from "../src/plugins/ragdoll-punch";
 import { engine } from "./fake-point-script";
 
 test("a killing headshot spares, launches, then kills the victim for the shooter; other hits don't", () => {

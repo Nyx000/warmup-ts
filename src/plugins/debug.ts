@@ -3,7 +3,7 @@
  */
 
 import { Console } from "cs_script/point_script";
-import { ENGINE_EVENTS, EngineEvent, Plugin } from "../../core/plugin";
+import { ENGINE_EVENTS, EngineEvent, Plugin } from "../core/plugin";
 
 export interface DebugConfig {
   /** Events to leave out, e.g. ["OnGunFire", "OnBulletImpact"] for less noise. */
@@ -13,7 +13,9 @@ export interface DebugConfig {
 export function debug({ skip = [] }: DebugConfig = {}): Plugin {
   const plugin: Plugin = {
     name: "debug",
-    onFreezeTimeEnd: () => Console.Log("[Debug] FreezeTimeEnd"),
+    onFreezeTimeEnd() {
+      Console.Log("[Debug] FreezeTimeEnd");
+    },
   };
 
   // OnModifyPlayerDamage is left out: a hook there takes part in deciding the damage

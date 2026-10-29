@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { createGamemode } from "../src/core/gamemode";
 import { engine } from "./fake-point-script";
-import { spawnSound } from "../src/plugins/hud/spawn-sound";
+import { spawnSound } from "../src/plugins/spawn-sound";
 
 test("players spawning together each get the sound played from them", () => {
   const sound = {};

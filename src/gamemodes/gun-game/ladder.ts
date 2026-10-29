@@ -21,6 +21,7 @@ import {
   Instance,
 } from "cs_script/point_script";
 import type { Vector } from "cs_script/point_script";
+import { say } from "../../core/chat";
 import { convars } from "../../core/convars";
 import { playerStore } from "../../core/players";
 import type { Plugin } from "../../core/plugin";
@@ -152,7 +153,7 @@ export function ladder({
   function announce(message: string): void {
     Console.Log(`[GunGame] ${message}`);
     // On a listen server this shows in chat as said by the host player (measured 2026-10-27)
-    Console.ServerCommand(`say ${message}`);
+    say(message);
   }
 
   function livePawns(): CSPlayerPawn[] {

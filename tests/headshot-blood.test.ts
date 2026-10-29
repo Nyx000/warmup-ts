@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { CSHitGroup } from "cs_script/point_script";
 import { createGamemode } from "../src/core/gamemode";
-import { headshotBlood } from "../src/plugins/combat/headshot-blood";
+import { headshotBlood } from "../src/plugins/headshot-blood";
 import { engine } from "./fake-point-script";
 
 function effect() {

@@ -3,8 +3,8 @@
  */
 
 import { Console } from "cs_script/point_script";
-import { connectedPlayers, playerStore } from "../../core/players";
-import type { Plugin } from "../../core/plugin";
+import { connectedPlayers, playerStore } from "../core/players";
+import type { Plugin } from "../core/plugin";
 
 export function moneyLog(): Plugin {
   const last = playerStore<number>();

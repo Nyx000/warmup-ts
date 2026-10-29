@@ -10,8 +10,8 @@
 
 import { Console, Instance } from "cs_script/point_script";
 import type { CSPlayerPawn, Vector } from "cs_script/point_script";
-import type { Plugin } from "../../core/plugin";
-import { connectedPlayers } from "../../core/players";
+import type { Plugin } from "../core/plugin";
+import { connectedPlayers } from "../core/players";
 
 export interface SpawnPoint {
   position: Vector;

@@ -7,8 +7,8 @@
  * and constantly respawning bots would use it up.
  */
 
-import type { Plugin } from "../../core/plugin";
-import { mapSound } from "../../core/sounds";
+import type { Plugin } from "../core/plugin";
+import { mapSound } from "../core/sounds";
 
 export function spawnSound({ entityName = "wts_spawn_sound", sounds = [] as string[], bots = true } = {}): Plugin {
   const play = mapSound("spawnSound", entityName);
