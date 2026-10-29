@@ -17,7 +17,7 @@ test("the ladder's server rules are set and checked, an empty default pistol inc
   engine.tick();
   expect(engine.convars.get("mp_t_default_secondary")).toBe("");
   expect(engine.convars.get("sv_infinite_ammo")).toBe(2);
-  expect(engine.logs).toContain("[ladder] All 12 convars read back as set (Console.SetConvar)");
+  expect(engine.logs).toContain("[ladder] All 14 convars read back as set (Console.SetConvar)");
 });
 
 function join(name: string): CSPlayerPawn {
