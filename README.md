@@ -35,6 +35,16 @@ bun run tools    # starts CS2 with Workshop Tools and the addon
 bun run dev      # rebuilds and copies the script into the addon on every save
 ```
 
+### Start a new gamemode
+
+```bash
+bun create Nyx000/warmup-ts my-gamemode
+```
+
+Bun downloads the repo's files without its history, starts a fresh git repo, runs `bun install`, and
+the `bun-create` entry in `package.json` drops this repo's `repository`, `bugs` and `homepage` links
+from your copy. PistolGG is still in it as the example; follow [Making your own](#making-your-own).
+
 Workshop Tools mounts one addon, named `cs2_gamemode_framework` (`ADDON_NAME` in
 `tools/launch-cs2.mjs` and `tools/utils/cs2-path.mjs`), and `bun run tools` assumes it exists. The
 script lands in the addon's `scripts` folder as `gamemode.vjs`. Your map needs a `point_script` entity
@@ -226,30 +236,57 @@ dist/                    build output (gamemode.vjs), not committed
 
 ## Writing a plugin
 
-A plugin is an object with a `name` and whichever hooks it needs. All hooks are optional.
+A plugin is an object with a `name` and whichever hooks it needs. All hooks are optional. The smallest
+useful one announces each kill in chat; put it in `src/plugins/hud/kill-feed.ts`:
 
 ```typescript
-import { Console } from "cs_script/point_script";
+import { say } from "../../core/chat";
 import type { Plugin } from "../../core/plugin";
 
-export function joinCounter(message: string): Plugin<{ joined: number }> {
-  let state = { joined: 0 };
-
+export function killFeed(): Plugin {
   return {
-    name: "joinCounter",
-    saveState: () => state, // kept across script_reload
-    restoreState(saved) { state = saved; },
-
-    onPlayerActivate({ player }) {
-      state.joined++;
-      Console.ClientCommand(player.GetPlayerSlot(), `echo "${message}"`);
+    name: "killFeed",
+    onPlayerKill({ player }) {
+      const victim = player.GetPlayerController()?.GetPlayerName() ?? "someone";
+      say(`${victim} was killed`);
     },
   };
 }
 ```
 
-Then add `joinCounter("Welcome!")` to your gamemode's plugin list. `src/plugins/dev/example.ts` is a
-starting template, and `debug()` from `src/plugins/dev/debug.ts` logs every event as it fires.
+Add `killFeed()` to your gamemode's `plugins` list and run `bun run dev`. `say` sends a line to
+everyone and strips the quotes and semicolons that would end the console command early.
+
+A chat command needs no plugin of your own: `commands()` from `src/core/chat.ts` builds one. It matches
+the first word of a chat line case-insensitively, and the rest of the line arrives split into `args`:
+
+```typescript
+commands({ "!rules": ({ player }) => say(`${player.GetPlayerName()}: headshots only`) }),
+```
+
+The engine can't hide a chat line, so everyone still sees `!rules`. A plugin that reads what another
+sets up lists it in `requires`, as in `requires: ["teamRules"]`, and the gamemode refuses to start
+unless that plugin is earlier in the list. `src/plugins/dev/example.ts` is a longer template with
+saved state, and `debug()` from `src/plugins/dev/debug.ts` logs every event as it fires.
+
+### If you know GMod, SourceMod or FiveM
+
+| When | WarmupTS | Elsewhere |
+|---|---|---|
+| A player connects | `onPlayerConnect` (no `player` for a bot), `onPlayerActivate` once they are in | GMod `PlayerInitialSpawn`, SourceMod `OnClientPutInServer`, FiveM `playerJoining` |
+| A player leaves | `onPlayerDisconnect({ playerSlot })` | `PlayerDisconnected`, `OnClientDisconnect`, `playerDropped` |
+| A player spawns | `onPlayerReset({ player })`, a pawn | `PlayerSpawn`, `player_spawn`, `playerSpawned` |
+| A player dies | `onPlayerKill({ player, attacker, weapon })`; `player` is the victim | `PlayerDeath`, `player_death`, `baseevents:onPlayerDied` |
+| A player takes damage | `onPlayerDamage` to observe; `onModifyPlayerDamage` to change it | `EntityTakeDamage`, SDKHooks `OnTakeDamage` |
+| A player chats | `onPlayerChat({ player, text })`, or `commands()` for `!words` | `PlayerSay`, `OnClientSayCommand` or `RegConsoleCmd`, `RegisterCommand` |
+| A round starts or ends | `onRoundStart`, `onRoundEnd({ winningTeam, reason })` | `round_start`, `round_end` |
+| Freeze time or warmup ends | `onFreezeTimeEnd`, `onWarmupEnd` | `round_freeze_end` |
+| Every tick | `onThink` (every `thinkInterval`, 0.05 s by default) | `Think`, `OnGameFrame`, a `CreateThread` loop |
+| Later, or repeatedly | `after()` and `every()` from `src/core/timers.ts` | `timer.Simple`, `CreateTimer`, `SetTimeout` |
+
+Unlike in GMod or SourceMod, a hook's return value is ignored, and returning one fails to compile.
+`onModifyPlayerDamage` is the exception: return `{ abort: true }` to cancel the damage, or a new
+`damage` to change it.
 
 The hooks that belong to the plugin itself:
 
@@ -317,7 +354,8 @@ back. The console shows which way they were set (`Console.SetConvar`, or `Consol
 build without it) and names every setting the server did not take. Use `serverCommands` for anything
 that is a command rather than a convar.
 
-A `convars()` plugin is named `convars`, so a gamemode lists it once. A plugin with settings of its own
+A gamemode can list `convars()` more than once. Each plugin is named after its label, first setting and
+count, so `requires` cannot name it as plain `convars`. A plugin with settings of its own
 calls `convars(values, "myPlugin")` inside itself and forwards `init()` and `onThink()` to it, as
 `ladder` does; the second argument is the log prefix.
 

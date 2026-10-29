@@ -6,9 +6,9 @@ Each plugin sits in one category, by what it touches. If it seems to fit two, it
 
 | Category | Plugins today |
 |---|---|
-| `combat/` | `headshot-blood.ts`, `headshot-sound.ts`, `headshots-only.ts` |
+| `combat/` | `headshot-blood.ts`, `headshot-sound.ts`, `headshots-only.ts`, `ragdoll-punch.ts` |
 | `economy/` | `money-log.ts` |
 | `dev/` | `debug.ts`, `example.ts` |
-| `hud/` | `spawn-sound.ts`, `welcome.ts` |
+| `hud/` | `repeat-message.ts`, `spawn-sound.ts`, `welcome.ts` |
 | `players/` | `random-spawns.ts` |
 | `loadout/`, `world/` | none yet; the folder and its README mark where they go |

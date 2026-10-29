@@ -23,6 +23,9 @@
     "clean": "rm -rf dist/*.js dist/*.vjs",
     "test": "bun test"
   },
+  "bun-create": {
+    "postinstall": "bun tools/maintenance/strip-template-links.mjs"
+  },
   "keywords": [
     "cs2",
     "counter-strike-2",

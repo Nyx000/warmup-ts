@@ -36,3 +36,9 @@ test("say strips the quotes and semicolons that would end the console command", 
   say('He said "hi"; quit');
   expect(engine.commands).toEqual(["say He said hi quit"]);
 });
+
+test("two commands() plugins without names can share a gamemode", () => {
+  expect(() =>
+    createGamemode({ name: "Test", plugins: [commands({ "!a": () => {} }), commands({ "!b": () => {} })] }),
+  ).not.toThrow();
+});

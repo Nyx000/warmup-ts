@@ -112,7 +112,9 @@ const gunLadder = ladder({
  * else's match.
  */
 function devSkipFor(command: string, skip: (pawn: CSPlayerPawn) => void) {
-  return ({ player }: { player: CSPlayerController }): void => {
+  return ({ player, args }: { player: CSPlayerController; args: string[] }): void => {
+    // The command must be the whole line, so chatter that merely starts with it doesn't skip a match
+    if (args.length > 0) return;
     const humans = connectedPlayers().filter((controller) => !controller.IsBot());
     const pawn = player.GetPlayerPawn();
     if (humans.length !== 1 || humans[0].GetPlayerSlot() !== player.GetPlayerSlot() || !pawn?.IsAlive()) return;

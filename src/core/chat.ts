@@ -15,10 +15,11 @@ export function say(message: string): void {
 /**
  * Runs a handler when a chat line starts with its command word, matched case-insensitively; the
  * rest of the line, split on whitespace, is `args`. Lines with no player (console `say`) are ignored.
+ * The default name lists the command words, so a gamemode can use commands() more than once.
  */
 export function commands(
   handlers: Record<string, (call: { player: CSPlayerController; args: string[] }) => void>,
-  name = "commands",
+  name = `commands:${Object.keys(handlers).join(",")}`,
 ): Plugin {
   // A Map, so a chat line of "constructor" can't find an Object.prototype method
   const byWord = new Map(Object.entries(handlers).map(([word, handler]) => [word.toLowerCase(), handler]));
