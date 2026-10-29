@@ -2,7 +2,7 @@
   "name": "warmup-ts",
   "version": "0.1.0",
   "type": "module",
-  "description": "TypeScript gamemode framework for CS2 cs_script, with plugins and hot reload",
+  "description": "TypeScript framework for CS2 cs_script gamemodes: a gamemode is a list of plugins",
   "repository": {
     "type": "git",
     "url": "https://github.com/Nyx000/warmup-ts.git"

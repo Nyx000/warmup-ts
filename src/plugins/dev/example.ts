@@ -1,6 +1,6 @@
 /**
  * Minimal plugin. Copy this file, rename the function and the name, and add it to
- * the plugin list in src/gamemode.ts. Every hook is optional.
+ * the plugin list in your gamemode file (src/gamemodes/<name>/<name>.ts). Every hook is optional.
  */
 
 import { Console } from "cs_script/point_script";
@@ -28,7 +28,8 @@ export function example(): Plugin<ExampleState> {
 
     onPlayerConnect({ player }) {
       state.connected++;
-      Console.Log(`[Example] ${player.GetPlayerName()} connected`);
+      // Some connects (bots joining) arrive without a player
+      Console.Log(`[Example] ${player?.GetPlayerName() ?? "a bot"} connected`);
     },
 
     onPlayerDisconnect() {
