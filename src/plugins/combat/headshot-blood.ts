@@ -1,42 +1,51 @@
 /**
- * Sprays blood from a player's head when they take a headshot.
+ * Sprays blood from a player's head when they take a headshot: bursts in front of the head and at
+ * it spraying back at the shooter, and beyond it spraying out the far side.
  *
- * The map provides the effects: info_particle_system entities named `<name>_0` up to
- * `<name>_<pool - 1>`, each with a blood effect and "Start Active" off. Entities sharing a name
- * play together, so effects can be layered. Each hit takes the next name in turn, so one spray
- * isn't cut short by the next.
+ * The map provides the effects (see core/effects.ts): info_particle_system entities named
+ * `<name>_0` up to `<name>_<pool - 1>`, each with a blood effect and "Start Active" off. Each burst
+ * takes a free name, so `pool` should be several times `spots`.
  */
 
-import { Console, CSHitGroup, Instance } from "cs_script/point_script";
+import { CSHitGroup } from "cs_script/point_script";
+import type { QAngle, Vector } from "cs_script/point_script";
+import { effectPool } from "../../core/effects";
 import type { Plugin } from "../../core/plugin";
 
-/** `spread` scatters each layered effect up to that many units from the head, so the spray covers more. */
-export function headshotBlood({ name = "wts_blood", pool = 4, spread = 10 } = {}): Plugin {
-  let next = 0;
-  const warned = new Set<number>();
+/**
+ * `spots` bursts per headshot, `step` units apart along the shot starting one step in front of the
+ * head, each scattered up to `spread` units, so the spray covers more.
+ */
+export function headshotBlood({ name = "wts_blood", pool = 12, spots = 3, step = 12, spread = 6 } = {}): Plugin {
+  const burst = effectPool("headshotBlood", name, pool);
 
   return {
     name: "headshotBlood",
-    onPlayerDamage({ player, hitGroup }) {
+    onPlayerDamage({ player, hitGroup, attacker }) {
       if (hitGroup !== CSHitGroup.HEAD) return;
-      const slot = next;
-      next = (next + 1) % pool;
-      const effects = Instance.FindEntitiesByName(`${name}_${slot}`);
-      if (effects.length === 0) {
-        // Each missing name is reported, so a map with fewer effects than `pool` shows which
-        if (!warned.has(slot)) Console.Log(`[headshotBlood] no info_particle_system named ${name}_${slot}; those headshots stay clean`);
-        warned.add(slot);
-        return;
-      }
-      const position = player.GetEyePosition();
-      for (const effect of effects) {
-        const jitter = () => (Math.random() * 2 - 1) * spread;
-        effect.Teleport({ position: { x: position.x + jitter(), y: position.y + jitter(), z: position.z + jitter() } });
-        // Stopping first restarts an effect still playing from an earlier hit. The teleport is
-        // immediate and the inputs queued, so a still-playing spray jumps first (not measured)
-        Instance.EntFireAtTarget({ target: effect, input: "Stop" });
-        Instance.EntFireAtTarget({ target: effect, input: "Start" });
+      const head = player.GetEyePosition();
+      const from = attacker?.GetEyePosition() ?? head;
+      const away = direction(from, head);
+      const back = { x: -away.x, y: -away.y, z: -away.z };
+      const jitter = () => (Math.random() * 2 - 1) * spread;
+      for (let spot = 0; spot < spots; spot++) {
+        const reach = (spot - 1) * step;
+        const position = { x: head.x + away.x * reach + jitter(), y: head.y + away.y * reach + jitter(), z: head.z + away.z * reach + jitter() };
+        // Not measured: assumed the blood effects spray along the entity's facing, as off a surface
+        burst(position, facing(reach > 0 ? away : back));
       }
     },
   };
+}
+
+// Pitch is positive looking down
+function facing({ x, y, z }: Vector): QAngle {
+  return { pitch: -(Math.asin(Math.max(-1, Math.min(1, z))) * 180) / Math.PI, yaw: (Math.atan2(y, x) * 180) / Math.PI, roll: 0 };
+}
+
+// Unit vector from one point to another; none when they coincide, so every spot is at the head
+function direction(from: Vector, to: Vector): Vector {
+  const d = { x: to.x - from.x, y: to.y - from.y, z: to.z - from.z };
+  const length = Math.hypot(d.x, d.y, d.z);
+  return length === 0 ? { x: 0, y: 0, z: 0 } : { x: d.x / length, y: d.y / length, z: d.z / length };
 }

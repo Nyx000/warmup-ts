@@ -100,7 +100,7 @@ export function ladder({
   onKillCount = () => {},
   onWin = () => {},
   onMatchEnd = () => {},
-}: LadderConfig): Plugin {
+}: LadderConfig): Plugin & { killsOnWeapon(pawn: CSPlayerPawn): number; setWeapon(pawn: CSPlayerPawn, weapon: string): boolean } {
   const rules = convars(RULES, "ladder");
   // Ladder index
   const levels = playerStore<number>();
@@ -213,6 +213,23 @@ export function ladder({
 
   return {
     name: "ladder",
+
+    /** A player's kills so far on their current weapon. */
+    killsOnWeapon(pawn: CSPlayerPawn) {
+      const slot = pawn.GetPlayerController()?.GetPlayerSlot();
+      return slot === undefined ? 0 : (kills.get(slot) ?? 0);
+    },
+
+    /** Puts a player straight onto a ladder weapon with no kills on it; false if it isn't on the ladder. */
+    setWeapon(pawn: CSPlayerPawn, weapon: string) {
+      const slot = pawn.GetPlayerController()?.GetPlayerSlot();
+      const level = weapons.indexOf(weapon);
+      if (slot === undefined || level < 0) return false;
+      levels.set(slot, level);
+      kills.delete(slot);
+      equip(pawn);
+      return true;
+    },
 
     init() {
       rules.init();
