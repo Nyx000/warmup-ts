@@ -26,7 +26,10 @@ test("a killing headshot spares, launches, then kills the victim for the shooter
   expect(victim.damageTaken).toEqual([]);
   // The pick past the end of the list gets the strongest launch
   engine.tick(0.5);
-  expect(victim.damageTaken.map(({ attacker, weapon }) => [attacker, weapon])).toEqual([[shooter, gun]]);
+  // A headshot, so the kill feed and the log still count it as one
+  expect(victim.damageTaken.map(({ damageTypes, attacker, weapon }) => [damageTypes, attacker, weapon])).toEqual([[CSDamageTypes.HEADSHOT, shooter, gun]]);
+  // That finishing hit isn't punched again, even if the engine reports it on the head
+  expect(engine.fire("OnModifyPlayerDamage", { player: victim, damage: 200, damageTypes: CSDamageTypes.HEADSHOT, damageFlags: CSDamageFlags.FORCE_DEATH, hitGroup: CSHitGroup.HEAD, attacker: shooter, weapon: gun })).toBeUndefined();
 });
 
 test("a killing grenade tosses the victim up, out from the explosion, from its own launches, then kills them", () => {
