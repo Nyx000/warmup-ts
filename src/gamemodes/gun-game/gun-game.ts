@@ -22,6 +22,7 @@ import { ragdollPunch } from "../../plugins/combat/ragdoll-punch";
 import { moneyLog } from "../../plugins/economy/money-log";
 import { spawnSound } from "../../plugins/hud/spawn-sound";
 import { randomSpawns } from "../../plugins/players/random-spawns";
+import { repeatMessage } from "../../plugins/hud/repeat-message";
 import { welcome } from "../../plugins/hud/welcome";
 import { deInferno } from "../../spawns/de_inferno";
 import { celebrateWin, playKillSound } from "./fanfare";
@@ -80,11 +81,13 @@ const KILLS_ON = { weapon_hegrenade: 4 };
 
 /**
  * How hard a killing headshot throws the body, one per kill on the same weapon like the bells:
- * the third, which moves the killer up, throws hardest. Nearly flat, so the feet stay down and drag while
- * the body is slammed backwards into whatever is behind; Source movement treats an upward speed over
- * about 140 as leaving the ground (assumed to hold in CS2, unmeasured).
+ * the third, which moves the killer up, throws hardest. Flat: even a slight lift read as a toss
+ * in game, so the body is only driven backwards.
  */
-const RAGDOLL_LAUNCHES = [
+const RAGDOLL_LAUNCHES = [600, 900, 1300].map((speed) => ({ speed, lift: 0 }));
+
+/** Grenade kills: straight up by `speed`, out from the blast by `lift`. */
+const GRENADE_LAUNCHES = [
   { speed: 600, lift: 25 },
   { speed: 900, lift: 30 },
   { speed: 1200, lift: 40 },
@@ -94,8 +97,12 @@ const gunLadder = ladder({
   weapons: WEAPONS,
   killsPerLevel: KILLS_PER_WEAPON,
   killsOn: KILLS_ON,
+  // 30 minutes on the round clock, then a draw and a new match
+  timeLimit: 30 * 60,
   onKillCount: playKillSound,
   onWin: celebrateWin,
+  // As the scoreboard comes up, after a win or a draw
+  onMatchEnd: () => Console.ServerCommand("say Powered by WarmupTS"),
 });
 
 /**
@@ -128,10 +135,11 @@ export const pistolGG: GamemodeConfig = {
     devSkip,
     headshotsOnly(),
     // After the plugins that can cancel damage, so only a hit that lands throws anyone
-    ragdollPunch({ launches: RAGDOLL_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
+    ragdollPunch({ launches: RAGDOLL_LAUNCHES, blasts: GRENADE_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
     headshotBlood(),
     moneyLog(),
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
+    repeatMessage({ seconds: 15 * 60, message: "PistolGG runs on WarmupTS, a TypeScript gamemode framework for CS2: github.com/Nyx000/warmup-ts" }),
     randomSpawns({ maps: { de_inferno: deInferno } }),
     spawnSound({ sounds: SPAWN_SOUNDS }),
   ],

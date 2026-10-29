@@ -149,6 +149,31 @@ test("after the victory lap the match ends on the scoreboard with its stats, and
   expect(alice.weapons).toEqual(["weapon_knife", "weapon_glock"]);
 });
 
+test("with a time limit the match ends in a draw when time runs out, with no winner and no victory lap", () => {
+  const results: MatchResult[] = [];
+  createGamemode({ name: "Test", plugins: [ladder({ weapons: LADDER, timeLimit: 60, onMatchEnd: (result) => results.push(result) })] });
+  engine.activate();
+  const alice = join("Alice");
+  const bob = join("Bob");
+  engine.fire("OnRoundStart", {});
+  for (const killWeapon of [PISTOL, PISTOL, PISTOL]) kill(alice, bob, killWeapon);
+  engine.tick(59);
+  expect(engine.roundEnds).toEqual([]);
+  engine.tick(1);
+
+  expect(results.map((result) => result.winner)).toEqual([undefined]);
+  expect(bob.moveType).toBe(CSMoveType.WALK);
+  expect(engine.roundEnds).toHaveLength(1);
+  // A 0:0 game over reads "Match Cancelled"
+  expect(engine.scores).toHaveLength(1);
+  engine.tick(60);
+  expect(engine.roundEnds).toHaveLength(1);
+
+  engine.fire("OnRoundStart", {});
+  engine.fire("OnPlayerReset", { player: alice });
+  expect(alice.weapons).toEqual(["weapon_knife", "weapon_glock"]);
+});
+
 test.each([
   ["a suicide", (victim: CSPlayerPawn) => victim],
   ["a death to the world", () => undefined],

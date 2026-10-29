@@ -29,8 +29,9 @@ test("a killing headshot spares, launches, then kills the victim for the shooter
   expect(victim.damageTaken.map(({ attacker, weapon }) => [attacker, weapon])).toEqual([[shooter, gun]]);
 });
 
-test("a killing grenade tosses the victim up, out from the explosion, then kills them", () => {
-  createGamemode({ name: "Test", plugins: [ragdollPunch({ launches: [{ speed: 1000, lift: 30 }], hold: 0.2 })] });
+test("a killing grenade tosses the victim up, out from the explosion, from its own launches, then kills them", () => {
+  const launches = [{ speed: 500, lift: -200 }];
+  createGamemode({ name: "Test", plugins: [ragdollPunch({ launches, blasts: [{ speed: 1000, lift: 30 }], hold: 0.2 })] });
   engine.activate();
   const [thrower, victim] = [engine.addPlayer("Alice").pawn, engine.addPlayer("Bob").pawn];
   victim.position = { x: 100, y: 0, z: 0 };

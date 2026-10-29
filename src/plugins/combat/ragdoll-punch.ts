@@ -15,8 +15,8 @@ import type { Plugin } from "../../core/plugin";
 import { every } from "../../core/timers";
 
 /**
- * Units per second along the shooter's aim, and straight up. A grenade kill swaps them: `speed`
- * straight up and `lift` out from the explosion.
+ * Units per second along the shooter's aim, and straight up (negative pushes down). A grenade
+ * kill swaps them: `speed` straight up and `lift` out from the explosion.
  */
 export interface Launch {
   speed: number;
@@ -25,10 +25,12 @@ export interface Launch {
 
 /**
  * `pick` chooses which of `launches` a killer's shot gets, by index (clamped to the list), and
- * the victim is pushed for `hold` seconds after the shot, then dies.
+ * the victim is pushed for `hold` seconds after the shot, then dies. Grenade kills pick from
+ * `blasts` the same way, `launches` when it is left out.
  */
 export function ragdollPunch({
   launches = [{ speed: 1200, lift: 350 }] as Launch[],
+  blasts = undefined as Launch[] | undefined,
   pick = (_killer: CSPlayerPawn): number => 0,
   hold = 0.1,
 } = {}): Plugin {
@@ -37,7 +39,8 @@ export function ragdollPunch({
     onModifyPlayerDamage({ player, damage, damageTypes, damageFlags, hitGroup, attacker, inflictor, weapon }) {
       const blast = (damageTypes & CSDamageTypes.BLAST) !== 0;
       if ((!blast && hitGroup !== CSHitGroup.HEAD) || attacker?.GetClassName() !== "player" || damage < player.GetHealth()) return undefined;
-      const { speed, lift } = launches[Math.max(0, Math.min(launches.length - 1, pick(attacker as CSPlayerPawn)))];
+      const list = blast ? (blasts ?? launches) : launches;
+      const { speed, lift } = list[Math.max(0, Math.min(list.length - 1, pick(attacker as CSPlayerPawn)))];
       let velocity: Vector;
       if (blast) {
         const from = inflictor?.GetAbsOrigin() ?? player.GetAbsOrigin();
