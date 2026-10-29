@@ -5,7 +5,8 @@
  * get no line. Turn the engine's own cash awards off (mp_playercashawards 0), or kills pay twice.
  *
  * Balances: when the server provides the convar `wts_wallet_out`, each human's money is set to
- * their balance once they are in game. The plugin logs `[wallet] seq=S slots=0,3`; whoever keeps
+ * their balance once they are in game, and held there: the engine sets everyone's money to
+ * mp_startmoney at every match start, and the next think puts the balance back. The plugin logs `[wallet] seq=S slots=0,3`; whoever keeps
  * the balances answers by setting the convar to `S 0:1240 3:0`. Until a player's balance has
  * arrived they can be paid but not charged, so a charge can't come out of money that isn't there.
  */
@@ -26,8 +27,8 @@ export interface MoneyPlugin extends Plugin {
 
 /** Dollars per kill: of a human player, and of a bot. */
 export function money({ killHuman = 5, killBot = 1 } = {}): MoneyPlugin {
-  // Slots whose balance has been applied
-  const restored = playerStore<true>();
+  // Each restored human's balance, kept up to date with their payments since
+  const balances = playerStore<number>();
   let request: { seq: number; slots: number[]; at: number; paid: Map<number, number> } | undefined;
   let seq = 0;
   let wallet: "unknown" | "on" | "off" = "unknown";
@@ -36,7 +37,7 @@ export function money({ killHuman = 5, killBot = 1 } = {}): MoneyPlugin {
   function pay(controller: CSPlayerController, amount: number, reason: string): boolean {
     const slot = controller.GetPlayerSlot();
     const human = !controller.IsBot();
-    if (amount < 0 && human && wallet === "on" && !restored.has(slot)) return false;
+    if (amount < 0 && human && wallet === "on" && !balances.has(slot)) return false;
     const before = controller.GetMoneySpendableNow();
     controller.AddMoneySpendableNow(amount);
     if (controller.GetMoneySpendableNow() === before && amount !== 0 && !warned) {
@@ -45,6 +46,8 @@ export function money({ killHuman = 5, killBot = 1 } = {}): MoneyPlugin {
     }
     if (human) {
       Console.Log(`[money] slot=${slot} ${amount < 0 ? "" : "+"}${amount} ${reason}`);
+      const balance = balances.get(slot);
+      if (balance !== undefined) balances.set(slot, balance + amount);
       // Not in the balance the pending request will bring back
       if (request?.slots.includes(slot)) request.paid.set(slot, (request.paid.get(slot) ?? 0) + amount);
     }
@@ -58,7 +61,7 @@ export function money({ killHuman = 5, killBot = 1 } = {}): MoneyPlugin {
       if (!controller || !request?.slots.includes(slot) || !Number.isFinite(balance)) continue;
       const target = balance + (request.paid.get(slot) ?? 0);
       controller.AddMoneySpendableNow(target - controller.GetMoneySpendableNow());
-      restored.set(slot, true);
+      balances.set(slot, target);
     }
     request = undefined;
   }
@@ -66,7 +69,7 @@ export function money({ killHuman = 5, killBot = 1 } = {}): MoneyPlugin {
   return {
     name: "money",
     pay,
-    players: { restored },
+    players: { balances },
 
     onThink() {
       if (wallet === "unknown") {
@@ -77,6 +80,11 @@ export function money({ killHuman = 5, killBot = 1 } = {}): MoneyPlugin {
         else seq = Number.parseInt(last ?? "", 10) || 0;
       }
       if (wallet === "off") return;
+      for (const [slot, balance] of balances) {
+        const controller = Instance.GetPlayerController(slot);
+        const drift = controller ? balance - controller.GetMoneySpendableNow() : 0;
+        if (drift !== 0) controller?.AddMoneySpendableNow(drift);
+      }
       if (request) {
         const reply = Console.GetConvarString(WALLET) ?? "";
         if (reply.startsWith(`${request.seq} `)) apply(reply);
@@ -84,7 +92,7 @@ export function money({ killHuman = 5, killBot = 1 } = {}): MoneyPlugin {
         return;
       }
       const waiting = connectedPlayers()
-        .filter((controller) => !controller.IsBot() && !restored.has(controller.GetPlayerSlot()))
+        .filter((controller) => !controller.IsBot() && !balances.has(controller.GetPlayerSlot()))
         .map((controller) => controller.GetPlayerSlot());
       if (waiting.length === 0) return;
       request = { seq: ++seq, slots: waiting, at: Instance.GetGameTime(), paid: new Map() };

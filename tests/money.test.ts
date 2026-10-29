@@ -50,6 +50,11 @@ test("each human's money becomes their balance, plus what they were paid while i
   expect(alice.money).toBe(1241);
   expect(wallet.pay(alice as never, -50, "grenade")).toBe(true);
   expect(alice.money).toBe(1191);
+
+  // A match start sets everyone to mp_startmoney; the balance comes back on the next think
+  alice.money = 0;
+  engine.tick();
+  expect(alice.money).toBe(1191);
 });
 
 test("without wts_wallet_out, money starts at 0 and charges are allowed", () => {
