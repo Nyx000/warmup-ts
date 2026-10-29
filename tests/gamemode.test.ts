@@ -37,6 +37,17 @@ test("two plugins with one name are refused", () => {
   );
 });
 
+test.each([
+  ["missing", [{ name: "b", requires: ["a"] }], "which isn't in the plugin list"],
+  ["listed after it", [{ name: "b", requires: ["a"] }, { name: "a" }], 'Plugin "b" requires "a" to be listed before it'],
+])("a required plugin that is %s is refused, naming both", (_, plugins, message) => {
+  expect(() => createGamemode({ name: "Test", plugins })).toThrow(message);
+});
+
+test("a required plugin listed earlier is accepted", () => {
+  expect(() => createGamemode({ name: "Test", plugins: [{ name: "a" }, { name: "b", requires: ["a"] }] })).not.toThrow();
+});
+
 test("a callback missing from the running CS2 build is logged, and the rest still work", () => {
   engine.unsupported.add("OnPlayerPing");
   const ran: string[] = [];

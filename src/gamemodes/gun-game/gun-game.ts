@@ -9,9 +9,10 @@
  */
 
 import type { GamemodeConfig } from "../../core/gamemode";
-import type { Plugin } from "../../core/plugin";
 import { connectedPlayers } from "../../core/players";
 import { Console } from "cs_script/point_script";
+import type { CSPlayerController, CSPlayerPawn } from "cs_script/point_script";
+import { commands, say } from "../../core/chat";
 import { convars } from "../../core/convars";
 import type { ConvarValue } from "../../core/convars";
 import { teamRules, Teams } from "../../core/rules";
@@ -102,7 +103,7 @@ const gunLadder = ladder({
   onKillCount: playKillSound,
   onWin: celebrateWin,
   // As the scoreboard comes up, after a win or a draw
-  onMatchEnd: () => Console.ServerCommand("say Powered by WarmupTS"),
+  onMatchEnd: () => say("Powered by WarmupTS"),
 });
 
 /**
@@ -110,19 +111,23 @@ const gunLadder = ladder({
  * celebration. Only while the one asking is the only human on the server, so it can't tilt anyone
  * else's match.
  */
-const devSkip: Plugin = {
-  name: "devSkip",
-  onPlayerChat({ player, text }) {
-    const command = text.trim().toLowerCase();
-    if ((command !== "!grenade" && command !== "!feathers") || !player) return;
+function devSkipFor(command: string, skip: (pawn: CSPlayerPawn) => void) {
+  return ({ player }: { player: CSPlayerController }): void => {
     const humans = connectedPlayers().filter((controller) => !controller.IsBot());
     const pawn = player.GetPlayerPawn();
     if (humans.length !== 1 || humans[0].GetPlayerSlot() !== player.GetPlayerSlot() || !pawn?.IsAlive()) return;
     Console.Log(`[devSkip] ${player.GetPlayerName()}: ${command}`);
-    if (command === "!feathers") celebrateWin(pawn);
-    else gunLadder.setWeapon(pawn, "weapon_hegrenade");
+    skip(pawn);
+  };
+}
+
+const devSkip = commands(
+  {
+    "!grenade": devSkipFor("!grenade", (pawn) => gunLadder.setWeapon(pawn, "weapon_hegrenade")),
+    "!feathers": devSkipFor("!feathers", celebrateWin),
   },
-};
+  "devSkip",
+);
 
 // ── The gamemode: its name and its plugins, which run in this order ──
 

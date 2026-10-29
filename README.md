@@ -195,7 +195,8 @@ createGamemode(pistolGG);
 
 A plugin that throws is logged and skipped for that call while the rest carry on. Order matters where
 plugins build on each other: `onModifyPlayerDamage` runs as a chain, and `teamRules` goes before any
-plugin that reads a player's team in `onPlayerConnect`.
+plugin that reads a player's team in `onPlayerConnect`. A plugin that depends on another by name lists it
+in `requires`, and `createGamemode` throws at startup if it is missing or listed after.
 
 ### Making your own
 
@@ -212,7 +213,7 @@ Plugins only your gamemode uses go in its folder. When a second gamemode needs o
 ```
 src/
 ├── gamemode.ts          entry point: picks the gamemode
-├── core/                the framework: plugin contract, gamemode runtime, player stores, timers, convars, rules
+├── core/                the framework: plugin contract, gamemode runtime, player stores, timers, convars, rules, chat commands and `say`
 ├── gamemodes/
 │   └── gun-game/        gun-game.ts (the gamemode), ladder.ts (its main plugin)
 ├── plugins/             shared plugins: combat, loadout, players, economy, world, hud, dev
