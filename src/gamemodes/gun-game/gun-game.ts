@@ -18,6 +18,7 @@ import type { ConvarValue } from "../../core/convars";
 import { teamRules, Teams } from "../../core/rules";
 import type { TeamRulesConfig } from "../../core/rules";
 import { serverPools } from "../../core/effects";
+import { serverConfig } from "../../core/server-config";
 import { headshotBlood, headshotBloodPool } from "../../plugins/headshot-blood";
 import { headshotsOnly } from "../../plugins/headshots-only";
 import { mapRotation } from "../../plugins/map-rotation";
@@ -187,7 +188,8 @@ export const pistolGG: GamemodeConfig = {
     headshotsOnly(),
     // After the plugins that can cancel damage, so only a hit that lands throws anyone
     ragdollPunch({ launches: RAGDOLL_LAUNCHES, blasts: GRENADE_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
-    serverPools([...headshotBloodPool(), ...FEATHERS]),
+    // The blood and feathers, where the server provides entity pools
+    ...(serverConfig.pools ? [serverPools([...headshotBloodPool(), ...FEATHERS], serverConfig.pools)] : []),
     headshotBlood(),
     wallet,
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),

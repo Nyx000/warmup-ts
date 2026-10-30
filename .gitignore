@@ -8,6 +8,9 @@ bun.lock
 # Build outputs
 dist/
 
+# Settings for the server being deployed to (src/core/server-config.ts)
+server.config.json
+
 # IDE
 .vscode/
 .idea/

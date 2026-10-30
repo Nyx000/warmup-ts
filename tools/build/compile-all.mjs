@@ -4,11 +4,13 @@
  *   bun tools/build/compile-all.mjs [--watch]
  */
 
-import { watch } from "fs";
+import { existsSync, readFileSync, watch } from "fs";
 import { join } from "path";
 
 const root = join(import.meta.dir, "../..");
 const srcDir = join(root, "src");
+// Settings for the server being deployed to (src/core/server-config.ts); gitignored, optional
+const serverConfigFile = join(root, "server.config.json");
 
 async function build() {
   const result = await Bun.build({
@@ -18,6 +20,7 @@ async function build() {
     format: "esm",
     target: "browser",
     external: ["cs_script/point_script"],
+    define: { SERVER_CONFIG: existsSync(serverConfigFile) ? JSON.stringify(JSON.parse(readFileSync(serverConfigFile, "utf8"))) : "undefined" },
   });
   if (!result.success) console.error(result.logs.join("\n"));
   return result.success;

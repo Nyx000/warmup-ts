@@ -40,7 +40,14 @@ const quoted = (...words: string[]) => words.map((word) => `"${word}"`).join(" "
  * round start: the restart cleanup before every round start (warmup end, every game restart)
  * deletes them.
  */
-export function serverPools(layers: PoolLayer[], { clear = "wts_pools_clear", add = "wts_pool", reload = "wts_pools_reload" } = {}): Plugin {
+/** The server's console commands: forget every pool, add a layer (`add <name> <count> <classname> [key value]...`), load the pools. */
+export interface PoolCommands {
+  clear: string;
+  add: string;
+  reload: string;
+}
+
+export function serverPools(layers: PoolLayer[], { clear, add, reload }: PoolCommands): Plugin {
   return {
     name: "serverPools",
     init() {
