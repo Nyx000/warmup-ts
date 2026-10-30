@@ -17,8 +17,8 @@ import { convars } from "../../core/convars";
 import type { ConvarValue } from "../../core/convars";
 import { teamRules, Teams } from "../../core/rules";
 import type { TeamRulesConfig } from "../../core/rules";
-import { effectsReload } from "../../core/effects";
-import { headshotBlood } from "../../plugins/headshot-blood";
+import { serverPools } from "../../core/effects";
+import { headshotBlood, headshotBloodPool } from "../../plugins/headshot-blood";
 import { headshotsOnly } from "../../plugins/headshots-only";
 import { mapRotation } from "../../plugins/map-rotation";
 import { ragdollPunch } from "../../plugins/ragdoll-punch";
@@ -34,7 +34,7 @@ import { deNuke } from "../../spawns/de_nuke";
 import { deOverpass } from "../../spawns/de_overpass";
 import { deTrain } from "../../spawns/de_train";
 import { deVertigo } from "../../spawns/de_vertigo";
-import { celebrateWin, playDemotion, playKillSound } from "./fanfare";
+import { celebrateWin, FEATHERS, playDemotion, playKillSound } from "./fanfare";
 import { ladder } from "./ladder";
 
 // ── Settings: edit these to change how a match plays ──
@@ -187,7 +187,7 @@ export const pistolGG: GamemodeConfig = {
     headshotsOnly(),
     // After the plugins that can cancel damage, so only a hit that lands throws anyone
     ragdollPunch({ launches: RAGDOLL_LAUNCHES, blasts: GRENADE_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
-    effectsReload(),
+    serverPools([...headshotBloodPool(), ...FEATHERS]),
     headshotBlood(),
     wallet,
     welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),

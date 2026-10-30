@@ -4,7 +4,7 @@
  */
 
 import type { CSPlayerPawn } from "cs_script/point_script";
-import { effectPool } from "../../core/effects";
+import { effectPool, particlePool } from "../../core/effects";
 import { mapSound } from "../../core/sounds";
 import { after } from "../../core/timers";
 
@@ -58,6 +58,7 @@ const FEATHER_STEP = 0.1;
 const FEATHER_BURSTS = 5;
 const FEATHER_RADIUS = 48;
 const FEATHER_HEIGHT = 72;
+export const FEATHERS = particlePool("wts_feathers", FEATHER_POOL, ["particles/critters/chicken/chicken_gone_cheaper.vpcf"]);
 const feathers = effectPool("fanfare", "wts_feathers", FEATHER_POOL);
 
 const killSound = mapSound("fanfare", "wts_headshot_sound");

@@ -15,15 +15,41 @@ import type { Plugin } from "./plugin";
 import { after } from "./timers";
 
 /**
- * Runs a server console command at each round start, for a server that provides its effect entities
- * outside the map's own entities: the restart cleanup (at warmup end and every game restart) deletes
- * those, and the command puts them back. Every round start follows a cleanup.
+ * One layer of an entity pool: each name `<name>_0` up to `<name>_<count - 1>` gets one entity of
+ * `classname` with these keys, so layers sharing a name play together. `{name}` in a value becomes
+ * the entity's own name.
  */
-export function effectsReload(command = "wts_effects_reload"): Plugin {
+export interface PoolLayer {
+  name: string;
+  count: number;
+  classname: string;
+  keys?: Record<string, string>;
+}
+
+/** A pool of info_particle_system bursts for effectPool: one layer per effect, "Start Active" off. */
+export function particlePool(name: string, count: number, effects: string[], keys: Record<string, string> = {}): PoolLayer[] {
+  return effects.map((effect) => ({ name, count, classname: "info_particle_system", keys: { effect_name: effect, start_active: "false", ...keys } }));
+}
+
+// Quoted, as the console splits a bare word on characters like { } ( ) ' :
+const quoted = (...words: string[]) => words.map((word) => `"${word}"`).join(" ");
+
+/**
+ * Asks a server that provides entities outside the map's own for the pools a gamemode uses, so each
+ * gamemode loads only what its plugins need. They're declared at map load, and loaded again at each
+ * round start: the restart cleanup before every round start (warmup end, every game restart)
+ * deletes them.
+ */
+export function serverPools(layers: PoolLayer[], { clear = "wts_pools_clear", add = "wts_pool", reload = "wts_pools_reload" } = {}): Plugin {
   return {
-    name: "effectsReload",
+    name: "serverPools",
+    init() {
+      Console.ServerCommand(clear);
+      for (const { name, count, classname, keys = {} } of layers) Console.ServerCommand(quoted(add, name, String(count), classname, ...Object.entries(keys).flat()));
+      Console.ServerCommand(reload);
+    },
     onRoundStart() {
-      Console.ServerCommand(command);
+      Console.ServerCommand(reload);
     },
   };
 }

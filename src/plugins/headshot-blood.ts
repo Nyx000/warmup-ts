@@ -2,15 +2,35 @@
  * Sprays blood from a player's head when they take a headshot: bursts in front of the head and at
  * it spraying back at the shooter, and beyond it spraying out the far side.
  *
- * The map provides the effects (see core/effects.ts): info_particle_system entities named
- * `<name>_0` up to `<name>_<pool - 1>`, each with a blood effect and "Start Active" off. Each burst
- * takes a free name, so `pool` should be several times `spots`.
+ * The map or the server provides the effects (see core/effects.ts): info_particle_system entities
+ * named `<name>_0` up to `<name>_<pool - 1>`, each with a blood effect and "Start Active" off;
+ * headshotBloodPool describes them for serverPools. Each burst takes a free name, so `pool` should
+ * be several times `spots`.
  */
 
 import { CSHitGroup } from "cs_script/point_script";
 import type { QAngle, Vector } from "cs_script/point_script";
-import { effectPool } from "../core/effects";
+import { effectPool, particlePool } from "../core/effects";
 import type { Plugin } from "../core/plugin";
+
+/**
+ * The game's blood impacts layered, so the spray is bigger; _high and _med also drop decals. Those
+ * two fade their spray with the distance from control point 0 to control point 1, which a real hit
+ * sets to the shooter; left unset only their decals were seen (2026-10-28), so control points 1 and
+ * 2 follow the effect itself.
+ */
+const BLOOD_EFFECTS = [
+  "particles/blood_impact/blood_impact_headshot.vpcf",
+  "particles/blood_impact/blood_impact_heavy.vpcf",
+  "particles/blood_impact/blood_impact_heavy.vpcf",
+  "particles/blood_impact/blood_impact_goop_heavy.vpcf",
+  "particles/blood_impact/blood_impact_high.vpcf",
+  "particles/blood_impact/blood_impact_med.vpcf",
+];
+
+export function headshotBloodPool({ name = "wts_blood", pool = 12 } = {}) {
+  return particlePool(name, pool, BLOOD_EFFECTS, { cpoint1: "{name}", cpoint2: "{name}" });
+}
 
 /**
  * `spots` bursts per headshot, `step` units apart along the shot starting one step in front of the
