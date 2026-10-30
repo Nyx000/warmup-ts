@@ -52,3 +52,6 @@ spikes/
 
 # Crash dumps
 *.mdmp
+
+# Gamemodes checked out here, each its own repo
+games/
