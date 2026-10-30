@@ -46,6 +46,11 @@ Bun downloads the repo's files without its history, starts a fresh git repo, run
 the `bun-create` entry in `package.json` drops this repo's `repository`, `bugs` and `homepage` links
 from your copy. The free-for-all example is in it as a starting point; follow [Making your own](#making-your-own).
 
+To keep a gamemode in a repo of its own instead, add WarmupTS to it as a git submodule, keep the entry
+point at `src/gamemode.ts`, and run the build tools with `--root .`, for example
+`bun vendor/warmup-ts/tools/build/dev.mjs --root .`; they use that repo's `src/`, `dist/` and
+`server.config.json`.
+
 Workshop Tools mounts one addon, named `cs2_gamemode_framework` (`ADDON_NAME` in
 `tools/launch-cs2.mjs` and `tools/utils/cs2-path.mjs`), and `bun run tools` assumes it exists. The
 script lands in the addon's `scripts` folder as `gamemode.vjs`. Your map needs a `point_script` entity

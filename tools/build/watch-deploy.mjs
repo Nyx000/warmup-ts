@@ -1,15 +1,16 @@
 /**
  * Copies dist/*.vjs into the addon's scripts folders (content/ and game/).
  *
- *   bun tools/build/watch-deploy.mjs [--once]
+ *   bun tools/build/watch-deploy.mjs [--once] [--root <dir>]
  */
 
 import { existsSync } from "fs";
 import { copyFile, mkdir, readdir, stat } from "fs/promises";
 import { join } from "path";
 import { clearCache, getAddonScriptsPaths } from "../utils/cs2-path.mjs";
+import { root } from "../utils/root.mjs";
 
-const distDir = join(import.meta.dir, "../..", "dist");
+const distDir = join(root, "dist");
 const dirs = Object.values(await getAddonScriptsPaths());
 for (const dir of dirs) await mkdir(dir, { recursive: true });
 

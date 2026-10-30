@@ -3,12 +3,15 @@
  * Dev mode: compile on change and deploy on change, side by side.
  *
  * Bun's script shell doesn't support "&", so package.json can't background
- * one watcher itself; this spawns both and stops both when either exits.
+ * one watcher itself; this spawns both and stops both when either exits. --root <dir> is handed to both.
  */
 
+import { join } from "path";
+import { rootArgs } from "../utils/root.mjs";
+
 const procs = [
-  Bun.spawn(["bun", "tools/build/compile-all.mjs", "--watch"], { stdio: ["inherit", "inherit", "inherit"] }),
-  Bun.spawn(["bun", "tools/build/watch-deploy.mjs"], { stdio: ["inherit", "inherit", "inherit"] }),
+  Bun.spawn(["bun", join(import.meta.dir, "compile-all.mjs"), "--watch", ...rootArgs], { stdio: ["inherit", "inherit", "inherit"] }),
+  Bun.spawn(["bun", join(import.meta.dir, "watch-deploy.mjs"), ...rootArgs], { stdio: ["inherit", "inherit", "inherit"] }),
 ];
 
 const stopAll = () => procs.forEach((p) => p.kill());

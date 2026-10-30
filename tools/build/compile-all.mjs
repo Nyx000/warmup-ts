@@ -8,10 +8,9 @@
  */
 
 import { existsSync, readFileSync, watch } from "fs";
-import { join, resolve } from "path";
+import { join } from "path";
+import { root } from "../utils/root.mjs";
 
-const rootArg = process.argv.indexOf("--root");
-const root = rootArg >= 0 ? resolve(process.argv[rootArg + 1]) : join(import.meta.dir, "../..");
 const srcDir = join(root, "src");
 // Settings for the server being deployed to (src/core/server-config.ts); gitignored, optional
 const serverConfigFile = join(root, "server.config.json");
