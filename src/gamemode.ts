@@ -4,6 +4,6 @@
  */
 
 import { createGamemode } from "./core/gamemode";
-import { pistolGG } from "./gamemodes/gun-game/gun-game";
+import { freeForAll } from "./gamemodes/free-for-all/free-for-all";
 
-createGamemode(pistolGG);
+createGamemode(freeForAll);
