@@ -12,6 +12,7 @@ import { join } from "path";
 import { root } from "../utils/root.mjs";
 
 const srcDir = join(root, "src");
+const frameworkSrcDir = join(import.meta.dir, "../../src");
 // Settings for the server being deployed to (src/core/server-config.ts); gitignored, optional
 const serverConfigFile = join(root, "server.config.json");
 
@@ -35,7 +36,10 @@ if (!process.argv.includes("--watch")) {
 } else {
   await build();
   console.log("Watching src/ for changes");
-  watch(srcDir, { recursive: true }, async (_event, file) => {
+  const onChange = async (_event, file) => {
     if (file?.endsWith(".ts") && !file.endsWith(".test.ts") && (await build())) console.log(`Rebuilt after ${file}`);
-  });
+  };
+  watch(srcDir, { recursive: true }, onChange);
+  // A gamemode in its own repo compiles this framework's files in too
+  if (srcDir !== frameworkSrcDir) watch(frameworkSrcDir, { recursive: true }, onChange);
 }

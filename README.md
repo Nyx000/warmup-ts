@@ -46,10 +46,11 @@ Bun downloads the repo's files without its history, starts a fresh git repo, run
 the `bun-create` entry in `package.json` drops this repo's `repository`, `bugs` and `homepage` links
 from your copy. The free-for-all example is in it as a starting point; follow [Making your own](#making-your-own).
 
-To keep a gamemode in a repo of its own instead, add WarmupTS to it as a git submodule, keep the entry
-point at `src/gamemode.ts`, and run the build tools with `--root .`, for example
-`bun vendor/warmup-ts/tools/build/dev.mjs --root .`; they use that repo's `src/`, `dist/` and
-`server.config.json`.
+To keep a gamemode in a repo of its own instead, put it in `games/<name>/`, a folder this repo ignores.
+Keep the entry point at `src/gamemode.ts`, have its `tsconfig.json` extend `../../tsconfig.json` and map
+`warmup-ts/*` to `../../src/*`, and run the build tools with `--root .`, for example
+`bun ../../tools/build/dev.mjs --root .`; they use that repo's `src/`, `dist/` and `server.config.json`,
+and rebuild when either its code or the framework's changes.
 
 Workshop Tools mounts one addon, named `cs2_gamemode_framework` (`ADDON_NAME` in
 `tools/launch-cs2.mjs` and `tools/utils/cs2-path.mjs`), and `bun run tools` assumes it exists. The
@@ -200,6 +201,7 @@ docs/plugins.md          the plugin reference: every hook, per-player data, time
 tests/                   every test, plus the fake cs_script runtime they run against
 tools/                   build, deploy, launch and type-sync scripts behind the bun run commands
 dist/                    build output (gamemode.vjs), not committed
+games/                   gamemodes kept in their own repos, not committed
 ```
 
 ## Writing a plugin
