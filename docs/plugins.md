@@ -91,7 +91,7 @@ that is a command rather than a convar.
 A gamemode can list `convars()` more than once: each is named after its label, first setting and
 count, so two lists don't clash. A plugin with settings of its own
 calls `convars(values, "myPlugin")` inside itself and forwards `init()` and `onThink()` to it, as
-`ladder` does; the second argument is the log prefix.
+`teamRules` does; the second argument is the log prefix.
 
 `teamRules` takes three options and also turns off team balancing and team limits, which would fight a
 gamemode that places players itself:

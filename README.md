@@ -13,7 +13,8 @@ straight from the `point_script.d.ts` Valve ships with CS2.
 WarmupTS ships no map and no game content: it is only the script. The map you load it into provides
 the `point_script` entity and every other entity a plugin looks up by name.
 
-It's early. The script side works and comes with one complete gamemode. Per-player persistence
+It's early. The script side works and comes with a small example gamemode, free-for-all. PistolGG, the
+headshot-only gun game on the public WarmupTS server, is a separate gamemode built on it. Per-player persistence
 (SteamID, SQLite) through a small Metamod:Source extension is planned.
 
 ## Getting started
@@ -43,7 +44,7 @@ bun create Nyx000/warmup-ts my-gamemode
 
 Bun downloads the repo's files without its history, starts a fresh git repo, runs `bun install`, and
 the `bun-create` entry in `package.json` drops this repo's `repository`, `bugs` and `homepage` links
-from your copy. PistolGG is still in it as the example; follow [Making your own](#making-your-own).
+from your copy. The free-for-all example is in it as a starting point; follow [Making your own](#making-your-own).
 
 Workshop Tools mounts one addon, named `cs2_gamemode_framework` (`ADDON_NAME` in
 `tools/launch-cs2.mjs` and `tools/utils/cs2-path.mjs`), and `bun run tools` assumes it exists. The
@@ -70,31 +71,20 @@ server's `game/csgo/scripts/`, put your map's `.vpk` in `game/csgo/maps/`, and s
 
 ## The included gamemode
 
-Out of the box you get PistolGG, a free-for-all pistol gun game, headshots only. Three kills move you up a
-ladder of nine pistols, four kills on the HE grenade, and then the knife. A knife kill moves you up at once, whatever your
-kill count on the current weapon, and a knife kill on the last weapon wins the match: everyone else is
-frozen for a short victory lap, then the end screen names the winner: the team everyone plays on
-scores a point and takes the winner's name. Killing yourself, or dying to the world, drops you back a weapon.
+Out of the box you get free-for-all: everyone joins CT with no team pick, everyone can damage everyone,
+there is no freeze time, and on de_inferno players spawn at random points away from each other. It
+lives in `src/gamemodes/free-for-all/` and is kept small on purpose: it is the example to copy, not a
+finished game.
 
-Players spawn at random points away from each other, with no freeze time, and a sound plays from each
-player as they spawn. A headshot sprays blood, and each kill rings a bell from the victim's head, a step higher
-for each kill on the same weapon (wind chimes from the thrower on the grenade); a knife kill plays Arms Race's knife sting with a
-chicken on top, and the winner gets a chicken chorus while the map's own chickens burst into feathers in front of
-their eyes. The kill sounds and the win fanfare live in `fanfare.ts`. The gamemode
-lives in `src/gamemodes/gun-game/`, a name from before it was called PistolGG, and its chat and log
-prefix is `[GunGame]`.
+### What plugins need from a map
 
-### What PistolGG needs from a map
-
-The map provides these entities, and each plugin looks its own up by name:
+A plugin that plays something from a player looks its entity up by name, and the map provides it:
 
 | Entity name | Class | Settings | Used by |
 |---|---|---|---|
-| `wts_blood_0` to `wts_blood_11` | `info_particle_system` | "Start Active" off | `headshotBlood` |
-| `wts_headshot_sound` | `point_soundevent` | "Re-trigger Stops Last" off, "Entity Index Selection" set to "Use Entity Index" | the kill sounds, or `headshotSound` |
 | `wts_spawn_sound` | `point_soundevent` | "Re-trigger Stops Last" off, "Entity Index Selection" set to "Use Entity Index" | `spawnSound` |
 
-The sounds need "Use Entity Index" so they play from the player instead of the map origin, and for
+The sound needs "Use Entity Index" so it plays from the player instead of the map origin, and for
 that `pawnTargetName` (`src/core/players.ts`) names each player's pawn `wts_player_<slot>`. Every plugin
 works without its entities: it logs the missing name once and skips.
 
@@ -114,7 +104,7 @@ spawns if it has none. `candidates` (default 4) sets how many random points are 
 
 A gamemode is one file: its settings at the top, then its name and plugin list. The settings are
 plain values with a comment each, so changing how a match plays never means reading plugin code.
-Trimmed from `src/gamemodes/gun-game/gun-game.ts`:
+`src/gamemodes/free-for-all/free-for-all.ts`, with its imports left out:
 
 ```typescript
 // ── Settings: edit these to change how a match plays ──
@@ -133,67 +123,34 @@ const SERVER: Record<string, ConvarValue> = {
   mp_warmuptime: 10,
   // Seconds everyone stands frozen at the start of a round
   mp_freezetime: 0,
-  // Bots stay quiet: no radio calls or chatter
-  bot_chatter: "off",
-  // 1 mutes the "Fire in the hole" radio call on every grenade throw
-  sv_ignoregrenaderadio: 1,
 };
-
-const WEAPONS = ["weapon_glock", "weapon_usp_silencer", /* ... */ "weapon_knife"];
-
-/** Sounds played together from each player as they spawn. */
-const SPAWN_SOUNDS = ["Player.Respawn", "Chicken.Panic", "Chicken.FlapWings", "Chicken.Fly", "Chicken.Chick.Interact"];
-
-const KILLS_PER_WEAPON = 3;
-
-/** Weapons that need a different number of kills. */
-const KILLS_ON = { weapon_hegrenade: 4 };
-
-/** How hard a killing headshot throws the body, one per kill on the same weapon. */
-const RAGDOLL_LAUNCHES = [600, 900, 1300].map((speed) => ({ speed, lift: 0 }));
-
-const gunLadder = ladder({
-  weapons: WEAPONS,
-  killsPerLevel: KILLS_PER_WEAPON,
-  killsOn: KILLS_ON,
-  // From fanfare.ts: kill sounds, and the chickens and feathers for the winner
-  onKillCount: playKillSound,
-  onWin: celebrateWin,
-});
 
 // ── The gamemode: its name and its plugins, which run in this order ──
 
-export const pistolGG: GamemodeConfig = {
-  name: "PistolGG",
+export const freeForAll: GamemodeConfig = {
+  name: "Free-for-all",
   plugins: [
     teamRules(TEAMS),
     convars(SERVER),
-    gunLadder,
-    devSkip,
-    headshotsOnly(),
-    ragdollPunch({ launches: RAGDOLL_LAUNCHES, pick: (killer) => gunLadder.killsOnWeapon(killer), hold: 0.1 }),
-    headshotBlood(),
-    money({ killHuman: 5, killBot: 1 }),
-    welcome((name) => `Welcome ${name} to PistolGG, running on WarmupTS`),
+    welcome((name) => `Welcome ${name}, running on WarmupTS`),
     randomSpawns({ maps: { de_inferno: deInferno } }),
-    spawnSound({ sounds: SPAWN_SOUNDS }),
+    example(),
   ],
 };
 ```
 
-`teamRules` makes everyone an enemy, `ladder` runs the weapon progression and the win, and
-`headshotsOnly` cancels bullet damage that isn't to the head. Drop `headshotsOnly()` and it's a normal
-gun game. `convars` applies the `SERVER` settings. The rest is extras: `devSkip` lets a lone player type `!grenade` to skip to the grenade, `ragdollPunch` throws a body back on a killing headshot and up on a grenade kill, harder for each kill on the weapon, `headshotBlood` is the headshot
-effect, `onKillCount` and `onWin` play the fanfare, `money` pays for kills and logs each payment to a human as a `[money] slot=N +5 kill` line, `welcome` greets each
-human player in chat, `mapRotation` moves to another Active Duty map after each match or when most players type `!rtv`, `randomSpawns` places players and `spawnSound` layers the spawn sounds.
-`ladder` also takes an optional `onMatchEnd({ winner, players })`, called after the victory lap and
-before the next match starts, for saving match stats; `winner` is the winner's slot and name, absent on a draw.
-PistolGG logs it as a `[match]` line for a stats service that reads the server log.
+`teamRules` makes everyone an enemy and `convars` applies the `SERVER` settings. `welcome` greets each
+human player in chat, `randomSpawns` places players, and `example` is the plugin template from
+`src/plugins/example.ts`. The other plugins in `src/plugins/` slot into the same list: `money` pays
+in-game money for kills and logs each payment to a human as a `[money] slot=N +5 kill` line,
+`mapRotation` moves to another Active Duty map after each match or when most players type `!rtv`,
+`spawnSound` plays sounds from each player as they spawn, `repeatMessage` posts a chat line on a timer,
+and `debug` logs every event as it fires.
 
 `src/gamemode.ts` picks which gamemode runs:
 
 ```typescript
-createGamemode(pistolGG);
+createGamemode(freeForAll);
 ```
 
 `createGamemode` takes the `GamemodeConfig`:
@@ -208,14 +165,15 @@ A plugin that throws is logged and skipped for that call while the rest carry on
 plugins build on each other: `onModifyPlayerDamage` runs as a chain, and `teamRules` goes before any
 plugin that reads a player's team in `onPlayerConnect`.
 
-When one plugin needs something from another, the gamemode file passes it in as a setting, the way
-`ragdollPunch` gets `pick: (killer) => gunLadder.killsOnWeapon(killer)` above. The link is typed and
-sits in the plugin list where you can see it, and neither plugin imports the other.
+When one plugin needs something from another, the gamemode file passes it in as a setting: a plugin
+that scales an effect by kill count takes a `pick: (killer) => number` option, and the gamemode hands it
+the function from the plugin that counts. The link is typed and sits in the plugin list where you can
+see it, and neither plugin imports the other.
 
 ### Making your own
 
 1. Make a folder in `src/gamemodes/`, with a main file named after it (`my-mode/my-mode.ts`). Copying
-   `gun-game/` is the quickest start.
+   `free-for-all/` is the quickest start.
 2. In that file, put the settings first, one commented value each, then export the gamemode: its
    name and its plugins, built from those settings.
 3. Point `src/gamemode.ts` at it.
@@ -229,7 +187,7 @@ src/
 ├── gamemode.ts          entry point: picks the gamemode
 ├── core/                the framework: plugin contract, gamemode runtime, player stores, timers, convars, rules, chat commands and `say`
 ├── gamemodes/
-│   └── gun-game/        gun-game.ts (the gamemode), ladder.ts (its main plugin)
+│   └── free-for-all/    free-for-all.ts, the example gamemode
 ├── plugins/             shared plugins, one file each
 ├── spawns/              per-map spawn lists for randomSpawns
 └── types/cs_script.d.ts Valve's API types, synced from your CS2 install
@@ -266,7 +224,7 @@ A chat command needs no plugin of your own: `commands()` from `src/core/chat.ts`
 the first word of a chat line case-insensitively, and the rest of the line arrives split into `args`:
 
 ```typescript
-commands({ "!rules": ({ player }) => say(`${player.GetPlayerName()}: headshots only`) }),
+commands({ "!rules": ({ player }) => say(`${player.GetPlayerName()}: free-for-all, no teams`) }),
 ```
 
 The engine can't hide a chat line, so everyone still sees `!rules`. `src/plugins/example.ts` is a longer template with
@@ -275,9 +233,9 @@ saved state, and `debug()` from `src/plugins/debug.ts` logs every event as it fi
 ### Shared or one gamemode's own
 
 A plugin belongs in `src/plugins/` when it knows nothing about any one gamemode: everything it needs
-comes in through its options, the way `ragdollPunch` gets the kill count from `pick`. One that only makes
-sense in one gamemode, like PistolGG's weapon `ladder`, stays in that gamemode's folder, and a few lines
-used in one place, like PistolGG's `devSkip`, can sit right in the gamemode file.
+comes in through its options. One that only makes sense in one gamemode, like a gun game's weapon
+ladder, stays in that gamemode's folder, and a few lines used in one place, like a chat command for
+testing, can sit right in the gamemode file.
 
 Every hook and how it behaves, per-player data, timers, server settings, team rules, and a table for
 readers coming from GMod, SourceMod or FiveM: [docs/plugins.md](docs/plugins.md).
@@ -313,16 +271,17 @@ test. A test builds a gamemode from the plugin under test, then drives the fake:
 
 ```typescript
 import { expect, test } from "bun:test";
-import { CSDamageTypes, CSHitGroup } from "cs_script/point_script";
 import { createGamemode } from "../src/core/gamemode";
-import { headshotsOnly } from "../src/plugins/headshots-only";
+import { teamRules, Teams } from "../src/core/rules";
 import { engine } from "./fake-point-script";
 
-test("a bullet to the chest does no damage", () => {
-  createGamemode({ name: "Test", plugins: [headshotsOnly()] });
+test("autoAssign moves a bot that picked the other team", () => {
+  createGamemode({ name: "Test", plugins: [teamRules({ autoAssign: Teams.CT, damage: "all" })] });
   engine.activate();
-  const hit = { damage: 100, damageTypes: CSDamageTypes.BULLET, damageFlags: 0, hitGroup: CSHitGroup.CHEST };
-  expect(engine.fire("OnModifyPlayerDamage", hit)).toEqual({ abort: true });
+  const bot = engine.addPlayer("Bot");
+  bot.pawn.team = Teams.TERRORIST;
+  engine.fire("OnPlayerTeamChanged", { player: bot.pawn, oldTeam: Teams.UNASSIGNED });
+  expect(bot.team).toBe(Teams.CT);
 });
 ```
 
