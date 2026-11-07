@@ -7,7 +7,7 @@
  * everyone near the player hears it.
  */
 
-import { Console, CSPlayerPawn, Instance } from "cs_script/point_script";
+import { Console, CSPlayerPawn, Entities } from "cs_script/point_script";
 import type { Vector } from "cs_script/point_script";
 import { pawnTargetName } from "./players";
 
@@ -16,7 +16,7 @@ export function mapSound(pluginName: string, entityName: string): (from: CSPlaye
   let warned = false;
 
   return (from, soundEvent) => {
-    const sound = Instance.FindEntityByName(entityName);
+    const [sound] = Entities.FindByName(entityName);
     if (!sound) {
       if (!warned) Console.Log(`[${pluginName}] no point_soundevent named ${entityName}; its sound stays off`);
       warned = true;
@@ -30,8 +30,8 @@ export function mapSound(pluginName: string, entityName: string): (from: CSPlaye
     if (!source) return;
     // Assumed, not measured: queued inputs to one entity run in the order fired, so two players in
     // the same tick each get their own source
-    if (soundEvent) Instance.EntFireAtTarget({ target: sound, input: "SetSoundEventName", value: soundEvent });
-    Instance.EntFireAtTarget({ target: sound, input: "SetSourceEntity", value: source });
-    Instance.EntFireAtTarget({ target: sound, input: "StartSound" });
+    if (soundEvent) sound.FireInput({ input: "SetSoundEventName", value: soundEvent });
+    sound.FireInput({ input: "SetSourceEntity", value: source });
+    sound.FireInput({ input: "StartSound" });
   };
 }

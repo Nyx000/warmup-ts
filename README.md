@@ -257,8 +257,8 @@ expects.
 it:
 
 ```typescript
-const door = Instance.FindEntityByName("door");
-if (door?.IsValid()) Instance.EntFireAtTarget({ target: door, input: "Open" });
+const [door] = Entities.FindByName("door");
+if (door?.IsValid()) door.FireInput({ input: "Open" });
 ```
 
 **If it isn't in `cs_script.d.ts`, it doesn't exist.** Anything the file marks `@deprecated` fails the
@@ -301,10 +301,10 @@ test("autoAssign moves a bot that picked the other team", () => {
 | `reload(load)` | A `script_reload`: the old script's save step, a fresh `load()`, then the new script's restore step. |
 | `logs`, `commands`, `convars`, `roundEnds` | What the script logged, ran and set. |
 | `freezePeriod`, `warmupPeriod` | What `GameRules.IsFreezePeriod()` and `IsWarmupPeriod()` return. |
-| `entities` | Map entities by name, which `Instance.FindEntityByName` and `FindEntitiesByName` find. |
-| `classes` | Map entities by class name, which `Instance.FindEntitiesByClass` finds. |
+| `entities` | Map entities by name, which `Entities.FindByName` finds. |
+| `classes` | Map entities by class name, which `Entities.FindByClass` finds. |
 | `mapName` | What `Instance.GetMapName()` returns. |
-| `inputs` | Every `Instance.EntFireAtTarget` call, as `{ target, input, value }`. |
+| `inputs` | Every `FireInput` call on a map entity, as `{ target, input, value }`. |
 | `scores` | Every `GameRules.AddTeamScore` call, as `[team, score]`. |
 | `refused`, `booleans`, `unsupported` | Make the fake behave like a server that refuses a convar, or a CS2 build that lacks an API. |
 

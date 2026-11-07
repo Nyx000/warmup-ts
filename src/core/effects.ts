@@ -9,7 +9,7 @@
  * tick; a burst with every name still resting is skipped.
  */
 
-import { Console, Instance } from "cs_script/point_script";
+import { Console, Entities, Instance } from "cs_script/point_script";
 import type { QAngle, Vector } from "cs_script/point_script";
 import type { Plugin } from "./plugin";
 import { after } from "./timers";
@@ -77,7 +77,7 @@ export function effectPool(pluginName: string, prefix: string, size: number, sec
       if ((restingUntil.get(slot) ?? 0) > now) continue;
       next = (slot + 1) % size;
       const name = `${prefix}_${slot}`;
-      const effects = Instance.FindEntitiesByName(name);
+      const effects = Entities.FindByName(name);
       if (effects.length === 0) {
         // Each missing name is reported, so a map with fewer effects than `size` shows which
         if (!warned.has(slot)) Console.Log(`[${pluginName}] no info_particle_system named ${name}; those bursts stay off`);
@@ -87,10 +87,10 @@ export function effectPool(pluginName: string, prefix: string, size: number, sec
       restingUntil.set(slot, now + seconds + REST_SECONDS);
       for (const effect of effects) {
         effect.Teleport({ position, angles });
-        Instance.EntFireAtTarget({ target: effect, input: "Start" });
+        effect.FireInput({ input: "Start" });
       }
       after(seconds, () => {
-        for (const effect of Instance.FindEntitiesByName(name)) Instance.EntFireAtTarget({ target: effect, input: "Stop" });
+        for (const effect of Entities.FindByName(name)) effect.FireInput({ input: "Stop" });
       });
       return true;
     }

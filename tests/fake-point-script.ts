@@ -107,11 +107,11 @@ export const engine = {
   scores: [] as [number, number][],
   /** Instance.On* callbacks and "Console.<method>" names to leave out, as an older CS2 build would. */
   unsupported: new Set<string>(),
-  /** Map entities Instance.FindEntityByName and FindEntitiesByName can find, by name. */
+  /** Map entities Entities.FindByName can find, by name. */
   entities: new Map<string, object>(),
-  /** Instance.EntFireAtTarget calls, in order. */
+  /** FireInput calls on map entities, in order. */
   inputs: [] as { target: object; input: string; value?: unknown }[],
-  /** Map entities Instance.FindEntitiesByClass can find, by class. */
+  /** Map entities Entities.FindByClass can find, by class. */
   classes: new Map<string, object[]>(),
   /** What Instance.GetMapName returns. */
   mapName: "",
@@ -177,11 +177,7 @@ const instanceMethods: Record<string, unknown> = {
   GetGameTime: () => time,
   GetAllPlayerControllers: () => [...players],
   GetPlayerController: (slot: number) => players.find((player) => player.GetPlayerSlot() === slot),
-  FindEntityByName: (name: string) => engine.entities.get(name),
-  FindEntitiesByName: (name: string) => (engine.entities.has(name) ? [engine.entities.get(name)] : []),
-  EntFireAtTarget: (config: (typeof engine.inputs)[number]) => void engine.inputs.push(config),
   GetMapName: () => engine.mapName,
-  FindEntitiesByClass: (className: string) => engine.classes.get(className) ?? [],
 };
 
 // Every Instance.On* takes one registration, as in CS2: a second one throws
@@ -195,6 +191,21 @@ export const Instance = new Proxy(instanceMethods, {
     };
   },
 });
+
+// Tests store plain objects, so FireInput is added on the way out. Non-enumerable, so
+// toEqual on a test's own object still sees only what the test put there.
+function mapEntity(entity: object): object {
+  if (!("FireInput" in entity)) {
+    const FireInput = (config: Omit<(typeof engine.inputs)[number], "target">) => void engine.inputs.push({ target: entity, ...config });
+    Object.defineProperty(entity, "FireInput", { value: FireInput });
+  }
+  return entity;
+}
+
+export const Entities = {
+  FindByName: (name: string) => (engine.entities.has(name) ? [mapEntity(engine.entities.get(name) as object)] : []),
+  FindByClass: (className: string) => (engine.classes.get(className) ?? []).map(mapEntity),
+};
 
 function setConvar(name: string, value: unknown): void {
   if (!engine.refused.has(name)) engine.convars.set(name, value);

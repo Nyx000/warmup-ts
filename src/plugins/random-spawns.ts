@@ -8,7 +8,7 @@
  * (src/spawns), or else from the map's info_deathmatch_spawn entities.
  */
 
-import { Console, Instance } from "cs_script/point_script";
+import { Console, Entities, Instance } from "cs_script/point_script";
 import type { CSPlayerPawn, Vector } from "cs_script/point_script";
 import type { Plugin } from "../core/plugin";
 import { connectedPlayers } from "../core/players";
@@ -26,7 +26,7 @@ function distanceToNearest(from: Vector, others: Vector[]): number {
 }
 
 function entityPoints(className: string): SpawnPoint[] {
-  return Instance.FindEntitiesByClass(className).map((entity) => ({ position: entity.GetAbsOrigin(), yaw: entity.GetAbsAngles().yaw }));
+  return Entities.FindByClass(className).map((entity) => ({ position: entity.GetAbsOrigin(), yaw: entity.GetAbsAngles().yaw }));
 }
 
 /**
