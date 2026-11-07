@@ -19,6 +19,7 @@ export const ENGINE_EVENTS = [
   "OnPlayerActivate",
   "OnPlayerDisconnect",
   "OnPlayerReset",
+  "OnBotControl",
   "OnPlayerTeamChanged",
   "OnPlayerJump",
   "OnPlayerLand",

@@ -34,7 +34,7 @@ The hooks that belong to the plugin itself:
 | `onFreezeTimeEnd()`, `onWarmupEnd()` | See below. |
 
 Every other hook is a Valve callback with `on` in front: `Instance.OnPlayerKill` becomes `onPlayerKill`.
-`ENGINE_EVENTS` in `src/core/plugin.ts` lists all 37, and `cs_script.d.ts` documents each event's
+`ENGINE_EVENTS` in `src/core/plugin.ts` lists all 38, and `cs_script.d.ts` documents each event's
 fields. Each hook gets Valve's event object unchanged: `Instance.OnRoundEnd` becomes
 `onRoundEnd({ winningTeam, reason })`. A few behave differently:
 
